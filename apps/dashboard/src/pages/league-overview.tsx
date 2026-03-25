@@ -43,10 +43,7 @@ export function LeagueOverviewPage() {
       ),
       cell: (info) => (
         <div>
-          <span className="font-medium text-gray-100">{info.getValue() ?? 'Unknown'}</span>
-          {info.row.original.team_name && (
-            <span className="ml-2 text-xs text-gray-500">{info.row.original.team_name}</span>
-          )}
+          <span className="font-medium text-gray-100">Team {info.row.original.roster_id}</span>
         </div>
       ),
     }),
@@ -156,7 +153,7 @@ export function LeagueOverviewPage() {
             <Trophy className="h-4 w-4 text-highlight" />
           </CardHeader>
           <CardContent>
-            <p className="text-xl font-bold text-highlight">{highestScorer?.display_name ?? 'N/A'}</p>
+            <p className="text-xl font-bold text-highlight">Team {highestScorer?.roster_id ?? 'N/A'}</p>
             <p className="text-sm text-gray-400">{highestScorer?.total_points_for.toFixed(2) ?? '0'} pts</p>
           </CardContent>
         </Card>
