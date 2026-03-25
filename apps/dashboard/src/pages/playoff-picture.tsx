@@ -3,13 +3,27 @@ import { Trophy } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { usePlayoffBracket } from '@/hooks/use-league-data'
+import { usePlayoffBracket, useOwners, useRosters } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { cn } from '@/lib/utils'
 
 export function PlayoffPicturePage() {
   const { leagueId } = useLeagueContext()
   const { data: bracket = [], isLoading, error } = usePlayoffBracket(leagueId)
+  const { data: owners = [] } = useOwners(leagueId)
+  const { data: rosters = [] } = useRosters(leagueId)
+
+  const rosterNameMap = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const roster of rosters) {
+      if (!roster.owner_id) continue
+      const owner = owners.find((o) => o.user_id === roster.owner_id)
+      if (owner) {
+        map.set(roster.roster_id, owner.team_name ?? owner.display_name)
+      }
+    }
+    return map
+  }, [rosters, owners])
 
   const rounds = useMemo(() => {
     const roundMap = new Map<number, typeof bracket>()
@@ -25,7 +39,7 @@ export function PlayoffPicturePage() {
 
   function getTeamName(rosterId: number | null): string {
     if (rosterId === null) return 'TBD'
-    return `Team ${rosterId}`
+    return rosterNameMap.get(rosterId) ?? `Team ${rosterId}`
   }
 
   if (isLoading) {

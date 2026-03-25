@@ -26,7 +26,7 @@ const navItems = [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { leagueId, setLeagueId, leagues } = useLeagueContext()
+  const { leagueName, setLeagueName, season, setSeason, leagueFamilies, availableSeasons } = useLeagueContext()
   const matchRoute = useMatchRoute()
 
   return (
@@ -85,6 +85,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )
           })}
         </nav>
+
+        <div className="border-t border-gray-700/50 p-4">
+          <label className="mb-1 block text-xs font-medium text-gray-400">League</label>
+          <Select
+            value={leagueName}
+            onChange={(e) => setLeagueName(e.target.value)}
+            className="w-full"
+          >
+            {leagueFamilies.map((family) => (
+              <option key={family.name} value={family.name}>
+                {family.name}
+              </option>
+            ))}
+            {leagueFamilies.length === 0 && (
+              <option value={leagueName}>Loading…</option>
+            )}
+          </Select>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -101,19 +119,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Button>
 
           <div className="flex flex-1 items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-100">Fantasy Dashboard</h2>
+            <h2 className="text-lg font-semibold text-gray-100">
+              {leagueName}{season ? ` — ${season}` : ''}
+            </h2>
             <Select
-              value={leagueId}
-              onChange={(e) => setLeagueId(e.target.value)}
-              className="w-48"
+              value={season}
+              onChange={(e) => setSeason(e.target.value)}
+              className="w-36"
             >
-              {leagues.map((league) => (
-                <option key={league.league_id} value={league.league_id}>
-                  {league.name}
-                </option>
+              {availableSeasons.map((s) => (
+                <option key={s} value={s}>{s}</option>
               ))}
-              {leagues.length === 0 && (
-                <option value={leagueId}>Loading leagues...</option>
+              {availableSeasons.length === 0 && (
+                <option value="">Loading…</option>
               )}
             </Select>
           </div>

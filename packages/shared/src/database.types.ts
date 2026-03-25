@@ -135,8 +135,8 @@ export interface DraftRow {
   created: number | null
   last_picked: number | null
   last_message_time: number | null
-  slot_to_roster_id: Record<string, number> | null
-  draft_order: Record<string, number> | null
+  slot_to_roster_id: Record<string, number | null> | null
+  draft_order: Record<string, number | null> | null
   synced_at: string
 }
 

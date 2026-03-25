@@ -66,7 +66,7 @@ export function MatchupHistoryPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex-1 text-center">
                       <p className={`font-semibold ${team1Wins ? 'text-win' : 'text-gray-100'}`}>
-                        Team {matchup.team1_roster_id}
+                        {matchup.team1_team_name ?? matchup.team1_name ?? `Team ${matchup.team1_roster_id}`}
                       </p>
                       <p className={`text-2xl font-bold ${team1Wins ? 'text-win' : 'text-gray-300'}`}>
                         {matchup.team1_points?.toFixed(2) ?? '-'}
@@ -76,7 +76,7 @@ export function MatchupHistoryPage() {
                     <span className="px-4 text-lg font-bold text-gray-500">vs</span>
                     <div className="flex-1 text-center">
                       <p className={`font-semibold ${team2Wins ? 'text-win' : 'text-gray-100'}`}>
-                        Team {matchup.team2_roster_id}
+                        {matchup.team2_team_name ?? matchup.team2_name ?? `Team ${matchup.team2_roster_id}`}
                       </p>
                       <p className={`text-2xl font-bold ${team2Wins ? 'text-win' : 'text-gray-300'}`}>
                         {matchup.team2_points?.toFixed(2) ?? '-'}

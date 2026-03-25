@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useDrafts, useDraftPicks } from '@/hooks/use-league-data'
+import { useDrafts, useDraftPicks, usePlayerMap } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +19,7 @@ export function DraftRecapPage() {
   const { data: drafts = [], isLoading: draftsLoading } = useDrafts(leagueId)
   const draftId = drafts[0]?.draft_id ?? ''
   const { data: picks = [], isLoading: picksLoading } = useDraftPicks(draftId)
+  const { data: playerMap } = usePlayerMap()
 
   const isLoading = draftsLoading || picksLoading
 
@@ -91,7 +92,7 @@ export function DraftRecapPage() {
                     key={`${round + 1}-${slot + 1}`}
                     className={cn('rounded border p-2 text-xs', colorClass)}
                   >
-                    <div className="font-medium">{meta?.first_name?.[0]}. {meta?.last_name ?? pick.player_id}</div>
+                    <div className="font-medium">{meta?.first_name?.[0]}. {meta?.last_name ?? playerMap?.get(pick.player_id) ?? pick.player_id}</div>
                     <div className="flex justify-between text-[10px] opacity-70">
                       <span>{position}</span>
                       <span>{meta?.team ?? ''}</span>

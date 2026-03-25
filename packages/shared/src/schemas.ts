@@ -143,8 +143,8 @@ export const draftSchema = z.object({
   created: z.number().nullish(),
   last_picked: z.number().nullish(),
   last_message_time: z.number().nullish(),
-  slot_to_roster_id: z.record(z.string(), z.number()).nullish(),
-  draft_order: z.record(z.string(), z.number()).nullish(),
+  slot_to_roster_id: z.record(z.string(), z.number().nullable()).nullish(),
+  draft_order: z.record(z.string(), z.number().nullable()).nullish(),
 }).passthrough()
 export type Draft = z.infer<typeof draftSchema>
 

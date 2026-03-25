@@ -219,3 +219,22 @@ export function useOwners(leagueId: string) {
     enabled: !!leagueId,
   })
 }
+
+export function usePlayerMap() {
+  return useQuery<Map<string, string>>({
+    queryKey: ['player-map'],
+    queryFn: async () => {
+      if (!supabase) return new Map<string, string>()
+      const { data, error } = await supabase
+        .from('players')
+        .select('player_id, first_name, last_name, full_name')
+      if (error) throw error
+      const map = new Map<string, string>()
+      for (const p of (data ?? []) as Pick<PlayerRow, 'player_id' | 'first_name' | 'last_name' | 'full_name'>[]) {
+        map.set(p.player_id, p.full_name ?? `${p.first_name} ${p.last_name}`)
+      }
+      return map
+    },
+    staleTime: 30 * 60 * 1000,
+  })
+}

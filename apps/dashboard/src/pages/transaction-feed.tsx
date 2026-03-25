@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useTransactions } from '@/hooks/use-league-data'
+import { useTransactions, usePlayerMap } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 
 const TYPE_LABELS: Record<string, string> = {
@@ -24,6 +24,7 @@ const TYPE_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'o
 export function TransactionFeedPage() {
   const { leagueId } = useLeagueContext()
   const { data: transactions = [], isLoading, error } = useTransactions(leagueId)
+  const { data: playerMap } = usePlayerMap()
   const [typeFilter, setTypeFilter] = useState('')
 
   const filtered = useMemo(() => {
@@ -97,14 +98,14 @@ export function TransactionFeedPage() {
                           <div key={`add-${playerId}`} className="flex items-center gap-2 text-sm">
                             <Plus className="h-3 w-3 text-win" />
                             <span className="text-win">Added</span>
-                            <span className="text-gray-300">{playerId}</span>
+                            <span className="text-gray-300">{playerMap?.get(playerId) ?? playerId}</span>
                           </div>
                         ))}
                         {tx.drops && Object.keys(tx.drops).map((playerId) => (
                           <div key={`drop-${playerId}`} className="flex items-center gap-2 text-sm">
                             <Minus className="h-3 w-3 text-loss" />
                             <span className="text-loss">Dropped</span>
-                            <span className="text-gray-300">{playerId}</span>
+                            <span className="text-gray-300">{playerMap?.get(playerId) ?? playerId}</span>
                           </div>
                         ))}
                       </div>
