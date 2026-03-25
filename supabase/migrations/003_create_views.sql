@@ -1,5 +1,6 @@
 ﻿-- Standings view: roster + owner info
-CREATE OR REPLACE VIEW standings AS
+CREATE OR REPLACE VIEW standings
+WITH (security_invoker = true) AS
 SELECT
   r.league_id,
   r.roster_id,
@@ -20,7 +21,8 @@ LEFT JOIN leagues l ON r.league_id = l.league_id
 ORDER BY r.wins DESC, (r.fpts + r.fpts_decimal / 100.0) DESC;
 
 -- Matchup pairs view: combines both sides of a matchup
-CREATE OR REPLACE VIEW matchup_pairs AS
+CREATE OR REPLACE VIEW matchup_pairs
+WITH (security_invoker = true) AS
 SELECT
   m1.league_id,
   m1.week,

@@ -1,7 +1,7 @@
 ---
 description: "Orchestrates full project implementation via sub-agents. Delegates scaffolding, schema design, ETL, dashboard, CI/CD, and polish tasks."
 name: "Implementation Orchestrator"
-tools: ["search/codebase", "edit/editFiles", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "search", "web/githubRepo", "web/fetch", "agent", "read/problems", "read/terminalLastCommand", "read/terminalSelection", "execute/createAndRunTask", "search/searchResults"]
+tools: [vscode/askQuestions, execute/getTerminalOutput, execute/createAndRunTask, execute/runInTerminal, read/problems, read/readFile, read/terminalSelection, read/terminalLastCommand, agent/runSubagent, edit/editFiles, search/changes, search/codebase, search/fileSearch, search/listDirectory, search/searchResults, search/textSearch, search/usages, search/searchSubagent, web/fetch, web/githubRepo, todo]
 ---
 
 # Implementation Orchestrator — Sleeper League Explorer

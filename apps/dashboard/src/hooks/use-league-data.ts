@@ -118,7 +118,8 @@ export function usePlayers(options: PlayerFilterOptions = {}) {
         .order('search_rank', { ascending: true, nullsFirst: false })
         .limit(limit)
       if (search) {
-        query = query.ilike('full_name', `%${search}%`)
+        const escaped = search.replace(/%/g, '\\%').replace(/_/g, '\\_')
+        query = query.ilike('full_name', `%${escaped}%`)
       }
       if (position) {
         query = query.eq('position', position)
