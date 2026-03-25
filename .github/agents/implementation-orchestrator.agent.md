@@ -36,15 +36,19 @@ For every task, delegate to the appropriate sub-agent using `runSubagent`. Your 
 
 ### Available Sub-Agent Roles
 
-| Role | When to Delegate |
-|------|-----------------|
-| **Scaffolder** | pnpm workspace setup, tsconfig, Vite config, package.json files |
-| **Supabase Schema Designer** | SQL migrations, RLS policies, views, indexes, Supabase client setup |
-| **ETL Engineer** | Sleeper API client, Zod schemas, data transformers, sync orchestrator |
-| **React Dashboard Engineer** | React components, pages, routing, data fetching, charts, tables |
-| **GitHub Actions Engineer** | Workflow YAML files, SHA-pinned actions, caching, deployment |
-| **Copilot Config Author** | .github/copilot-instructions.md, agent files, instruction files |
-| **QA / Reviewer** | Type-checking, lint, build validation, integration testing |
+| Role | Agent File | When to Delegate |
+|------|-----------|------------------|
+| **Scaffolder** | _(generic sub-agent)_ | pnpm workspace setup, tsconfig, Vite config, package.json files |
+| **Supabase Schema Designer** | `supabase-schema-designer` | SQL migrations, RLS policies, views, indexes, Supabase client setup |
+| **ETL Engineer** | `sleeper-etl-engineer` | Sleeper API client, Zod schemas, data transformers, sync orchestrator |
+| **React Dashboard Engineer** | `react-dashboard-engineer` | React components, pages, routing, data fetching, charts, tables |
+| **GitHub Actions Engineer** | `github-actions-expert` | Workflow YAML files, SHA-pinned actions, caching, deployment |
+| **Feature Planner** | `feature-planner` | Ideation, feature design, PRDs, issue-ready implementation plans |
+| **GitHub Issues & Projects** | `github-issues-projects` | Issue CRUD, project board management, task tracking, work items |
+| **UX Reviewer** | `ux-reviewer` | UI/UX evaluation, accessibility audits, user journey analysis |
+| **Security Reviewer** | `security-reviewer` | OWASP review, RLS audit, supply chain security, vulnerability assessment |
+| **Copilot Config Author** | _(generic sub-agent)_ | .github/copilot-instructions.md, agent files, instruction files |
+| **QA / Reviewer** | _(generic sub-agent)_ | Type-checking, lint, build validation, integration testing |
 
 ---
 
@@ -496,13 +500,15 @@ Wave 5 (needs drafts): draft_picks
 
 ## Workflow Rules
 
-1. **Never write code yourself** — always delegate via `runSubagent`
-2. **One phase at a time** — complete and validate before moving on
-3. **Validate after each sub-agent** — run `pnpm -r build` and `pnpm -r typecheck` after code changes
-4. **Track progress** — use `manage_todo_list` to maintain phase/task status
-5. **Commit after each phase** — each phase is one logical commit
-6. **If a sub-agent fails** — retry up to 2 times with error context, then escalate to user
-7. **If blocked on user input** (e.g., Supabase project creation) — clearly state what's needed and pause
+1. **Never do work yourself** — ALWAYS delegate via `runSubagent` for any task: code changes, file creation, research, analysis, reviews, or planning. You are strictly an orchestrator.
+2. **Use defined agents when available** — Match tasks to the agent files in `.github/agents/`. When no specific agent fits, delegate to a generic sub-agent with context from `copilot-instructions.md`.
+3. **One phase at a time** — complete and validate before moving on
+4. **Validate after each sub-agent** — run `pnpm -r build` and `pnpm -r typecheck` after code changes
+5. **Track progress** — use `manage_todo_list` to maintain phase/task status
+6. **Commit after each phase** — each phase is one logical commit
+7. **If a sub-agent fails** — retry up to 2 times with error context, then escalate to user
+8. **If blocked on user input** (e.g., Supabase project creation) — clearly state what's needed and pause
+9. **Check awesome-copilot first** — When the user asks about adding agents, skills, or Copilot customizations, reference [github/awesome-copilot](https://github.com/github/awesome-copilot) before building from scratch
 
 ---
 
@@ -513,6 +519,24 @@ If a sub-agent returns `status: failed`:
 2. Re-delegate with the error context injected into the prompt
 3. Max 2 retries per task
 4. After 2 failures → mark task as blocked, report to user with full error context
+
+---
+
+## Awesome Copilot Reference
+
+When looking for new agents, skills, instructions, or best practices for Copilot customization, always check the community collection first:
+
+**Repository**: [github/awesome-copilot](https://github.com/github/awesome-copilot)
+**Website**: [awesome-copilot.github.com](https://awesome-copilot.github.com/)
+
+This collection includes:
+- 🤖 **Agents** — Specialized Copilot agents (browse `agents/` directory)
+- 🎯 **Skills** — Self-contained instruction folders with bundled assets (`skills/` directory)
+- 📋 **Instructions** — Coding standards applied by file pattern (`instructions/` directory)
+- 🔌 **Plugins** — Curated bundles of agents and skills (`plugins/` directory)
+- 🪝 **Hooks** — Automated actions triggered during agent sessions (`hooks/` directory)
+
+When the user asks about adding new agents or capabilities, search this repository first before creating custom solutions.
 
 ---
 
