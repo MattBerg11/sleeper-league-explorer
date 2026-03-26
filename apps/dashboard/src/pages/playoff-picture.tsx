@@ -46,7 +46,7 @@ export function PlayoffPicturePage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-100">Playoff Picture</h2>
+        <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Playoff Picture</h2>
         <div className="flex gap-8">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-96 w-64" />
@@ -63,7 +63,7 @@ export function PlayoffPicturePage() {
   if (bracket.length === 0) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-100">Playoff Picture</h2>
+        <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Playoff Picture</h2>
         <Card>
           <CardContent className="p-8 text-center text-gray-400">
             No playoff bracket data available
@@ -75,7 +75,7 @@ export function PlayoffPicturePage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-100">Playoff Picture</h2>
+      <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Playoff Picture</h2>
 
       <div className="flex gap-8 overflow-auto pb-4">
         {rounds.map(({ round, matchups }) => (

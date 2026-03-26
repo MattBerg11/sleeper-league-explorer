@@ -46,10 +46,10 @@ export function PlayerExplorerPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-100">Player Explorer</h2>
+      <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Player Explorer</h2>
 
       <div className="flex flex-wrap gap-4">
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1 basis-full sm:basis-auto">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input
             placeholder="Search players..."
@@ -93,6 +93,7 @@ export function PlayerExplorerPage() {
             <ErrorAlert error={error} title="Error loading players" />
           ) : (
             <>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -129,6 +130,7 @@ export function PlayerExplorerPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Pagination Controls */}
               {totalCount > PAGE_SIZE && (

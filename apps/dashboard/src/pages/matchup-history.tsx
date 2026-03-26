@@ -47,8 +47,8 @@ export function MatchupHistoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-100">Matchup History</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Matchup History</h2>
         <Select
           value={String(week)}
           onChange={(e) => setWeek(Number(e.target.value))}
@@ -69,14 +69,14 @@ export function MatchupHistoryPage() {
       ) : error ? (
         <ErrorAlert error={error} title="Error loading matchups" />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2">
           {matchups.map((matchup) => {
             const team1Wins = (matchup.team1_points ?? 0) > (matchup.team2_points ?? 0)
             const team2Wins = (matchup.team2_points ?? 0) > (matchup.team1_points ?? 0)
             return (
               <Card key={matchup.matchup_id}>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
                     <div className="flex-1 text-center">
                       <p className={`font-semibold ${team1Wins ? 'text-win' : 'text-gray-100'}`}>
                         {matchup.team1_team_name ?? matchup.team1_name ?? `Team ${matchup.team1_roster_id}`}

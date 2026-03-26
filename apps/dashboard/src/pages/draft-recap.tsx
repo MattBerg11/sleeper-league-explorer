@@ -96,7 +96,7 @@ export function DraftRecapPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-100">Draft Recap</h2>
+        <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Draft Recap</h2>
         <Skeleton className="h-[600px]" />
       </div>
     )
@@ -105,7 +105,7 @@ export function DraftRecapPage() {
   if (error) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-100">Draft Recap</h2>
+        <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Draft Recap</h2>
         <ErrorAlert error={error} title="Error loading draft data" />
       </div>
     )
@@ -114,7 +114,7 @@ export function DraftRecapPage() {
   if (picks.length === 0) {
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-100">Draft Recap</h2>
+        <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Draft Recap</h2>
         <Card>
           <CardContent className="p-8 text-center text-gray-400">
             No draft data available
@@ -129,8 +129,8 @@ export function DraftRecapPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-gray-100">Draft Recap</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Draft Recap</h2>
         {drafts.length > 1 && (
           <Select
             className="w-48"
@@ -162,7 +162,7 @@ export function DraftRecapPage() {
           </div>
           <div
             className="grid gap-1"
-            style={{ gridTemplateColumns: `auto repeat(${draftBoard.cols}, minmax(120px, 1fr))` }}
+            style={{ gridTemplateColumns: `auto repeat(${draftBoard.cols}, minmax(100px, 1fr))` }}
           >
             {/* Header row */}
             <div className="p-2 text-xs font-medium text-gray-500" />

@@ -159,7 +159,7 @@ export function LeagueOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-100">League Overview</h2>
+      <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">League Overview</h2>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
@@ -199,6 +199,7 @@ export function LeagueOverviewPage() {
           <CardTitle>Standings</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -238,6 +239,7 @@ export function LeagueOverviewPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
