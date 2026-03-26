@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useStandings } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { ErrorAlert } from '@/components/error-alert'
+import { OwnerAvatar } from '@/components/owner-avatar'
 import type { StandingsRow } from '@sleeper-explorer/shared'
 
 const columnHelper = createColumnHelper<StandingsRow>()
@@ -55,7 +56,12 @@ export function LeagueOverviewPage() {
         </button>
       ),
       cell: (info) => (
-        <div>
+        <div className="flex items-center gap-2">
+          <OwnerAvatar
+            avatarId={info.row.original.owner_avatar}
+            name={info.row.original.team_name ?? info.row.original.display_name ?? 'Unknown'}
+            size="sm"
+          />
           <Link
             to="/matchups"
             search={(prev) => prev}
