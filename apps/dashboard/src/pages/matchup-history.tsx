@@ -9,7 +9,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useMatchupPairs, useAllMatchupPairs, useNFLState } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { ErrorAlert } from '@/components/error-alert'
+import { cn } from '@/lib/utils'
 import { MAX_REGULAR_SEASON_WEEKS } from '@sleeper-explorer/shared'
+
+const TEAM_COLORS = [
+  '#f87171', '#fb923c', '#fbbf24', '#a3e635',
+  '#34d399', '#22d3ee', '#60a5fa', '#a78bfa',
+  '#f472b6', '#e879f9', '#94a3b8', '#fca5a5',
+]
 
 export function MatchupHistoryPage() {
   const { leagueId } = useLeagueContext()
@@ -29,23 +36,56 @@ export function MatchupHistoryPage() {
   const { data: matchups = [], isLoading, error } = useMatchupPairs(leagueId, week)
   const { data: allMatchups = [] } = useAllMatchupPairs(leagueId)
 
-  const chartData = useMemo(() => {
-    const weeklyAvg = new Map<number, { total: number; count: number }>()
+  const teams = useMemo(() => {
+    const teamMap = new Map<number, string>()
     for (const m of allMatchups) {
+      if (!teamMap.has(m.team1_roster_id)) {
+        teamMap.set(m.team1_roster_id, m.team1_team_name ?? m.team1_name ?? `Team ${m.team1_roster_id}`)
+      }
+      if (!teamMap.has(m.team2_roster_id)) {
+        teamMap.set(m.team2_roster_id, m.team2_team_name ?? m.team2_name ?? `Team ${m.team2_roster_id}`)
+      }
+    }
+    return Array.from(teamMap.entries()).map(([id, name]) => ({ id, name }))
+  }, [allMatchups])
+
+  const chartData = useMemo(() => {
+    const weekData = new Map<number, Record<string, number>>()
+
+    for (const m of allMatchups) {
+      const entry = weekData.get(m.week) ?? { _total: 0, _count: 0 }
       const pts1 = m.team1_points ?? 0
       const pts2 = m.team2_points ?? 0
-      const existing = weeklyAvg.get(m.week) ?? { total: 0, count: 0 }
-      existing.total += pts1 + pts2
-      existing.count += 2
-      weeklyAvg.set(m.week, existing)
+      entry._total = (entry._total ?? 0) + pts1 + pts2
+      entry._count = (entry._count ?? 0) + 2
+      entry[`team_${m.team1_roster_id}`] = pts1
+      entry[`team_${m.team2_roster_id}`] = pts2
+      weekData.set(m.week, entry)
     }
-    return Array.from(weeklyAvg.entries())
-      .map(([w, { total, count }]) => ({
+
+    return Array.from(weekData.entries())
+      .map(([w, data]) => ({
         week: `Wk ${w}`,
-        avgScore: count > 0 ? Math.round((total / count) * 100) / 100 : 0,
+        avgScore: data._count > 0 ? Math.round((data._total / data._count) * 100) / 100 : 0,
+        ...Object.fromEntries(
+          Object.entries(data)
+            .filter(([k]) => k.startsWith('team_'))
+            .map(([k, v]) => [k, Math.round(v * 100) / 100]),
+        ),
       }))
       .sort((a, b) => parseInt(a.week.slice(3)) - parseInt(b.week.slice(3)))
   }, [allMatchups])
+
+  const [enabledTeams, setEnabledTeams] = useState<Set<number>>(new Set())
+
+  const toggleTeam = (teamId: number) => {
+    setEnabledTeams((prev) => {
+      const next = new Set(prev)
+      if (next.has(teamId)) next.delete(teamId)
+      else next.add(teamId)
+      return next
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -137,6 +177,27 @@ export function MatchupHistoryPage() {
         <Card>
           <CardHeader>
             <CardTitle>Average Score by Week</CardTitle>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {teams.map((team, idx) => (
+                <button
+                  key={team.id}
+                  onClick={() => toggleTeam(team.id)}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors border',
+                    enabledTeams.has(team.id)
+                      ? 'border-transparent text-white'
+                      : 'border-gray-600 text-gray-400 hover:text-gray-200',
+                  )}
+                  style={
+                    enabledTeams.has(team.id)
+                      ? { backgroundColor: TEAM_COLORS[idx % TEAM_COLORS.length] }
+                      : undefined
+                  }
+                >
+                  {team.name}
+                </button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -149,7 +210,20 @@ export function MatchupHistoryPage() {
                   labelStyle={{ color: 'var(--color-chart-tooltip-text)' }}
                   itemStyle={{ color: 'var(--color-chart-line)' }}
                 />
-                <Line type="monotone" dataKey="avgScore" stroke="var(--color-chart-line)" strokeWidth={2} dot={{ fill: 'var(--color-chart-line)' }} />
+                <Line type="monotone" dataKey="avgScore" stroke="var(--color-chart-line)" strokeWidth={2} dot={{ fill: 'var(--color-chart-line)' }} name="League Avg" />
+                {teams.map((team, idx) =>
+                  enabledTeams.has(team.id) ? (
+                    <Line
+                      key={team.id}
+                      type="monotone"
+                      dataKey={`team_${team.id}`}
+                      stroke={TEAM_COLORS[idx % TEAM_COLORS.length]}
+                      strokeWidth={1.5}
+                      dot={false}
+                      name={team.name}
+                    />
+                  ) : null,
+                )}
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
