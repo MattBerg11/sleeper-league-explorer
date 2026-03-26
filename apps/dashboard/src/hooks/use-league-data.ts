@@ -12,6 +12,7 @@ import type {
   PlayoffBracketRow,
   OwnerRow,
   NFLStateRow,
+  TradedPickRow,
 } from '@sleeper-explorer/shared'
 
 const STALE_TIME = 5 * 60 * 1000
@@ -210,6 +211,23 @@ export function usePlayoffBracket(leagueId: string) {
         .order('round', { ascending: true })
       if (error) throw error
       return (data ?? []) as PlayoffBracketRow[]
+    },
+    staleTime: STALE_TIME,
+    enabled: !!leagueId,
+  })
+}
+
+export function useTradedPicks(leagueId: string) {
+  return useQuery<TradedPickRow[]>({
+    queryKey: ['traded-picks', leagueId],
+    queryFn: async () => {
+      if (!supabase) return []
+      const { data, error } = await supabase
+        .from('traded_picks')
+        .select('*')
+        .eq('league_id', leagueId)
+      if (error) throw error
+      return (data ?? []) as TradedPickRow[]
     },
     staleTime: STALE_TIME,
     enabled: !!leagueId,
