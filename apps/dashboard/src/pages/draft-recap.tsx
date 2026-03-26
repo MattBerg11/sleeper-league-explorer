@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDrafts, useDraftPicks, usePlayerMap } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { ErrorAlert } from '@/components/error-alert'
 import { cn } from '@/lib/utils'
 
 const POSITION_COLORS: Record<string, string> = {
@@ -16,9 +17,10 @@ const POSITION_COLORS: Record<string, string> = {
 
 export function DraftRecapPage() {
   const { leagueId } = useLeagueContext()
-  const { data: drafts = [], isLoading: draftsLoading } = useDrafts(leagueId)
+  const { data: drafts = [], isLoading: draftsLoading, error: draftsError } = useDrafts(leagueId)
   const draftId = drafts[0]?.draft_id ?? ''
-  const { data: picks = [], isLoading: picksLoading } = useDraftPicks(draftId)
+  const { data: picks = [], isLoading: picksLoading, error: picksError } = useDraftPicks(draftId)
+  const error = draftsError ?? picksError
   const { data: playerMap } = usePlayerMap()
 
   const isLoading = draftsLoading || picksLoading
@@ -39,6 +41,15 @@ export function DraftRecapPage() {
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-gray-100">Draft Recap</h2>
         <Skeleton className="h-[600px]" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-100">Draft Recap</h2>
+        <ErrorAlert error={error} title="Error loading draft data" />
       </div>
     )
   }

@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useStandings } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { ErrorAlert } from '@/components/error-alert'
 import type { StandingsRow } from '@sleeper-explorer/shared'
 
 const columnHelper = createColumnHelper<StandingsRow>()
@@ -112,7 +113,7 @@ export function LeagueOverviewPage() {
   }
 
   if (error) {
-    return <div className="text-loss">Error loading standings: {error.message}</div>
+    return <ErrorAlert error={error} title="Error loading standings" />
   }
 
   const totalTeams = standings.length

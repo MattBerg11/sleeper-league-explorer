@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePlayoffBracket, useOwners, useRosters } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { ErrorAlert } from '@/components/error-alert'
 import { cn } from '@/lib/utils'
 
 export function PlayoffPicturePage() {
@@ -56,7 +57,7 @@ export function PlayoffPicturePage() {
   }
 
   if (error) {
-    return <div className="text-loss">Error loading playoff bracket: {error.message}</div>
+    return <ErrorAlert error={error} title="Error loading playoff bracket" />
   }
 
   if (bracket.length === 0) {

@@ -1,11 +1,25 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 import { Layout } from '@/components/layout'
+import { ErrorAlert } from '@/components/error-alert'
 import { LeagueOverviewPage } from '@/pages/league-overview'
 import { PlayerExplorerPage } from '@/pages/player-explorer'
 import { MatchupHistoryPage } from '@/pages/matchup-history'
 import { DraftRecapPage } from '@/pages/draft-recap'
 import { TransactionFeedPage } from '@/pages/transaction-feed'
 import { PlayoffPicturePage } from '@/pages/playoff-picture'
+
+function RouteErrorFallback({ error, reset }: ErrorComponentProps) {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center p-6">
+      <ErrorAlert
+        error={error}
+        reset={reset}
+        title="Page Error"
+      />
+    </div>
+  )
+}
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -63,6 +77,7 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
   routeTree,
   basepath: '/sleeper-league-explorer',
+  defaultErrorComponent: RouteErrorFallback,
 })
 
 declare module '@tanstack/react-router' {

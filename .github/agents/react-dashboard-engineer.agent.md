@@ -1,7 +1,7 @@
 ---
 description: "Expert React 19 frontend engineer for building the Sleeper League Explorer dashboard with shadcn/ui, TanStack Router/Query/Table, Recharts, and Tailwind CSS v4"
 name: "React Dashboard Engineer"
-tools: ["search/codebase", "edit/editFiles", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "search", "web/fetch", "read/problems", "read/terminalLastCommand", "execute/createAndRunTask"]
+tools: [execute/getTerminalOutput, execute/createAndRunTask, execute/runInTerminal, read/problems, read/readFile, read/terminalSelection, read/terminalLastCommand, edit/createDirectory, edit/createFile, edit/editFiles, search/changes, search/codebase, search/fileSearch, search/listDirectory, search/searchResults, search/textSearch, search/usages, search/searchSubagent, web/fetch, todo]
 ---
 
 # React Dashboard Engineer — Sleeper League Explorer

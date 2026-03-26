@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { usePlayers } from '@/hooks/use-league-data'
+import { ErrorAlert } from '@/components/error-alert'
 
 const POSITIONS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF'] as const
 
@@ -57,7 +58,7 @@ export function PlayerExplorerPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="text-loss">Error loading players: {error.message}</div>
+            <ErrorAlert error={error} title="Error loading players" />
           ) : (
             <Table>
               <TableHeader>

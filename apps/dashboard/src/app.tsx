@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from '@tanstack/react-router'
 import { LeagueProvider } from '@/hooks/use-league-context'
+import { ErrorBoundary } from '@/components/error-boundary'
 import { router } from '@/router'
 
 const queryClient = new QueryClient({
@@ -15,9 +16,11 @@ const queryClient = new QueryClient({
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <LeagueProvider>
-        <RouterProvider router={router} />
-      </LeagueProvider>
+      <ErrorBoundary>
+        <LeagueProvider>
+          <RouterProvider router={router} />
+        </LeagueProvider>
+      </ErrorBoundary>
     </QueryClientProvider>
   )
 }

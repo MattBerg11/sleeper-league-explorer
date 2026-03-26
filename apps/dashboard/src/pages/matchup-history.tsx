@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMatchupPairs, useAllMatchupPairs } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { ErrorAlert } from '@/components/error-alert'
 import { MAX_REGULAR_SEASON_WEEKS } from '@sleeper-explorer/shared'
 
 export function MatchupHistoryPage() {
@@ -54,7 +55,7 @@ export function MatchupHistoryPage() {
           ))}
         </div>
       ) : error ? (
-        <div className="text-loss">Error loading matchups: {error.message}</div>
+        <ErrorAlert error={error} title="Error loading matchups" />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {matchups.map((matchup) => {

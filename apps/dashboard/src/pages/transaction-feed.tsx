@@ -6,6 +6,7 @@ import { Select } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTransactions, usePlayerMap } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { ErrorAlert } from '@/components/error-alert'
 
 const TYPE_LABELS: Record<string, string> = {
   trade: 'Trade',
@@ -51,7 +52,7 @@ export function TransactionFeedPage() {
   }
 
   if (error) {
-    return <div className="text-loss">Error loading transactions: {error.message}</div>
+    return <ErrorAlert error={error} title="Error loading transactions" />
   }
 
   return (
