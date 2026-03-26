@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   createColumnHelper,
   flexRender,
@@ -7,25 +7,38 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import type { SortingState } from '@tanstack/react-table'
-import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowUpDown, TrendingUp, Users, Trophy } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useStandings } from '@/hooks/use-league-data'
+import { useStandings, useRosters, useOwners, useLeagues } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { ErrorAlert } from '@/components/error-alert'
 import { OwnerAvatar } from '@/components/owner-avatar'
+import { cn } from '@/lib/utils'
 import type { StandingsRow } from '@sleeper-explorer/shared'
 
 const columnHelper = createColumnHelper<StandingsRow>()
 
+const TABS = [
+  { id: 'standings', label: 'Standings' },
+  { id: 'leaders', label: 'Scoring Leaders' },
+  { id: 'rosters', label: 'Roster Breakdown' },
+  { id: 'settings', label: 'League Settings' },
+] as const
+
+type TabId = (typeof TABS)[number]['id']
+
 export function LeagueOverviewPage() {
   const { leagueId } = useLeagueContext()
   const { data: standings = [], isLoading, error } = useStandings(leagueId)
+  const { data: rosters = [] } = useRosters(leagueId)
+  const { data: owners = [] } = useOwners(leagueId)
+  const { data: leagues = [] } = useLeagues()
   const [sorting, setSorting] = useState<SortingState>([{ id: 'total_points_for', desc: true }])
+  const [activeTab, setActiveTab] = useState<TabId>('standings')
 
   const rankMap = useMemo(() => {
     const sorted = [...standings].sort((a, b) => {
@@ -37,6 +50,53 @@ export function LeagueOverviewPage() {
     sorted.forEach((row, i) => map.set(row.roster_id, i + 1))
     return map
   }, [standings])
+
+  const sortedByPoints = useMemo(
+    () => [...standings].sort((a, b) => b.total_points_for - a.total_points_for).slice(0, 10),
+    [standings],
+  )
+
+  const ownerMap = useMemo(() => {
+    const map = new Map<string, (typeof owners)[number]>()
+    for (const o of owners) map.set(o.user_id, o)
+    return map
+  }, [owners])
+
+  const rostersWithOwner = useMemo(
+    () =>
+      rosters.map((r) => {
+        const owner = r.owner_id ? ownerMap.get(r.owner_id) : undefined
+        const starterCount = r.starters?.length ?? 0
+        const totalCount = r.players?.length ?? 0
+        const irCount = r.reserve?.length ?? 0
+        const taxiCount = r.taxi?.length ?? 0
+        const benchCount = Math.max(0, totalCount - starterCount - irCount - taxiCount)
+        return {
+          ...r,
+          ownerName: owner?.team_name ?? owner?.display_name ?? `Team ${r.roster_id}`,
+          starterCount,
+          benchCount,
+          irCount,
+          taxiCount,
+          totalCount,
+        }
+      }),
+    [rosters, ownerMap],
+  )
+
+  const league = useMemo(
+    () => leagues.find((l) => l.league_id === leagueId),
+    [leagues, leagueId],
+  )
+
+  const positionCounts = useMemo(() => {
+    if (!league) return []
+    const counts = new Map<string, number>()
+    for (const pos of league.roster_positions) {
+      counts.set(pos, (counts.get(pos) ?? 0) + 1)
+    }
+    return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b))
+  }, [league])
 
   const columns = useMemo(() => [
     columnHelper.display({
@@ -194,54 +254,195 @@ export function LeagueOverviewPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Standings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      aria-sort={
-                        header.column.getIsSorted() === 'asc' ? 'ascending'
-                        : header.column.getIsSorted() === 'desc' ? 'descending'
-                        : undefined
-                      }
-                    >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center text-gray-400">
-                    No standings data available
-                  </TableCell>
-                </TableRow>
-              ) : (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
+      <div className="flex gap-1 rounded-lg bg-bg-secondary p-1">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={cn(
+              'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              activeTab === tab.id
+                ? 'bg-accent/20 text-accent'
+                : 'text-gray-400 hover:text-gray-100',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'standings' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Standings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        aria-sort={
+                          header.column.getIsSorted() === 'asc' ? 'ascending'
+                          : header.column.getIsSorted() === 'desc' ? 'descending'
+                          : undefined
+                        }
+                      >
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
                     ))}
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="text-center text-gray-400">
+                      No standings data available
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'leaders' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Scoring Leaders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {sortedByPoints.map((team, idx) => (
+                <div key={team.roster_id} className="flex items-center gap-3 rounded-lg border border-gray-700/50 p-3">
+                  <span className="w-8 text-center font-mono text-lg font-bold text-gray-400">{idx + 1}</span>
+                  <OwnerAvatar avatarId={team.owner_avatar} name={team.team_name ?? team.display_name ?? 'Unknown'} size="md" />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-100">{team.team_name ?? team.display_name}</div>
+                    <div className="text-xs text-gray-400">{team.wins}W-{team.losses}L</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono text-lg font-bold text-highlight">{team.total_points_for.toFixed(1)}</div>
+                    <div className="text-xs text-gray-400">Avg {(team.total_points_for / Math.max(1, team.wins + team.losses + team.ties)).toFixed(1)}/wk</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'rosters' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Roster Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Team</TableHead>
+                  <TableHead>Starters</TableHead>
+                  <TableHead>Bench</TableHead>
+                  <TableHead>IR</TableHead>
+                  <TableHead>Taxi</TableHead>
+                  <TableHead>Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rostersWithOwner.map((r) => (
+                  <TableRow key={r.roster_id}>
+                    <TableCell className="font-medium text-gray-100">{r.ownerName}</TableCell>
+                    <TableCell>{r.starterCount}</TableCell>
+                    <TableCell>{r.benchCount}</TableCell>
+                    <TableCell>{r.irCount}</TableCell>
+                    <TableCell>{r.taxiCount}</TableCell>
+                    <TableCell>{r.totalCount}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'settings' && (
+        league ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>General</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <InfoRow label="League" value={league.name} />
+                <InfoRow label="Season" value={league.season} />
+                <InfoRow label="Status" value={league.status} />
+                <InfoRow label="Teams" value={String(league.total_rosters)} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Roster Slots</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {positionCounts.map(([pos, count]) => (
+                  <InfoRow key={pos} label={pos} value={String(count)} />
+                ))}
+              </CardContent>
+            </Card>
+            <Card className="sm:col-span-2">
+              <CardHeader>
+                <CardTitle>Scoring</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {Object.entries(league.scoring_settings).slice(0, 15).map(([key, val]) => (
+                    <InfoRow key={key} label={key.replace(/_/g, ' ')} value={String(val)} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-8 text-center text-gray-400">
+              League settings not available
+            </CardContent>
+          </Card>
+        )
+      )}
+    </div>
+  )
+}
+
+interface InfoRowProps {
+  label: string
+  value: string
+}
+
+function InfoRow({ label, value }: InfoRowProps) {
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-400">{label}</span>
+      <span className="font-medium text-gray-100">{value}</span>
     </div>
   )
 }
