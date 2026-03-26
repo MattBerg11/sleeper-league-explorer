@@ -8,6 +8,7 @@ import {
   ArrowRightLeft,
   Trophy,
   Scale,
+  TrendingUp,
   Menu,
   X,
 } from 'lucide-react'
@@ -34,6 +35,7 @@ const navGroups = [
       { to: '/draft' as const, label: 'Draft', icon: FileText },
       { to: '/transactions' as const, label: 'Transactions', icon: ArrowRightLeft },
       { to: '/h2h' as const, label: 'Head-to-Head', icon: Scale },
+      { to: '/rankings' as const, label: 'Power Rankings', icon: TrendingUp },
     ],
   },
 ]
