@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useDrafts, useDraftPicks, useOwners, usePlayerMap, useRosters, useTradedPicks } from '@/hooks/use-league-data'
+import { useDrafts, useDraftPicks, useOwners, usePlayerMap, usePlayerSeasonPoints, useRosters, useTradedPicks } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { ErrorAlert } from '@/components/error-alert'
 import { cn } from '@/lib/utils'
@@ -29,6 +29,7 @@ export function DraftRecapPage() {
   const { data: rosters = [], isLoading: rostersLoading } = useRosters(leagueId)
   const { data: owners = [], isLoading: ownersLoading } = useOwners(leagueId)
   const { data: tradedPicks = [] } = useTradedPicks(leagueId)
+  const { data: playerPoints } = usePlayerSeasonPoints(leagueId)
 
   const isLoading = draftsLoading || picksLoading || rostersLoading || ownersLoading
 
@@ -212,6 +213,13 @@ export function DraftRecapPage() {
                       <span>{position}</span>
                       <span>{meta?.team ?? ''}</span>
                     </div>
+                    {playerPoints?.get(pick.player_id) != null && playerPoints.get(pick.player_id)! > 0 && (
+                      <div className="mt-0.5">
+                        <Badge variant="secondary" className="px-1 py-0 text-[9px]">
+                          {playerPoints.get(pick.player_id)!.toFixed(1)} pts
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 )
               }),

@@ -270,6 +270,31 @@ export function usePlayerMap() {
   })
 }
 
+export function usePlayerSeasonPoints(leagueId: string) {
+  return useQuery<Map<string, number>>({
+    queryKey: ['player-season-points', leagueId],
+    queryFn: async () => {
+      if (!supabase) return new Map<string, number>()
+      const { data, error } = await supabase
+        .from('matchups')
+        .select('players_points')
+        .eq('league_id', leagueId)
+      if (error) throw error
+      const totals = new Map<string, number>()
+      for (const row of data ?? []) {
+        const pp = row.players_points as Record<string, number> | null
+        if (!pp) continue
+        for (const [playerId, pts] of Object.entries(pp)) {
+          totals.set(playerId, (totals.get(playerId) ?? 0) + pts)
+        }
+      }
+      return totals
+    },
+    staleTime: STALE_TIME,
+    enabled: !!leagueId,
+  })
+}
+
 export function useNFLState() {
   return useQuery<NFLStateRow | null>({
     queryKey: ['nfl-state'],
