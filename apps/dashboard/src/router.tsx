@@ -8,6 +8,7 @@ import { MatchupHistoryPage } from '@/pages/matchup-history'
 import { DraftRecapPage } from '@/pages/draft-recap'
 import { TransactionFeedPage } from '@/pages/transaction-feed'
 import { PlayoffPicturePage } from '@/pages/playoff-picture'
+import { NotFoundPage } from '@/pages/not-found'
 
 function RouteErrorFallback({ error, reset }: ErrorComponentProps) {
   return (
@@ -27,6 +28,7 @@ const rootRoute = createRootRoute({
       <Outlet />
     </Layout>
   ),
+  notFoundComponent: NotFoundPage,
 })
 
 const indexRoute = createRoute({
@@ -78,6 +80,7 @@ export const router = createRouter({
   routeTree,
   basepath: '/sleeper-league-explorer',
   defaultErrorComponent: RouteErrorFallback,
+  defaultNotFoundComponent: NotFoundPage,
 })
 
 declare module '@tanstack/react-router' {
