@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useDrafts, useDraftPicks, usePlayerMap } from '@/hooks/use-league-data'
+import { useDrafts, useDraftPicks, useOwners, usePlayerMap, useRosters } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { ErrorAlert } from '@/components/error-alert'
 import { cn } from '@/lib/utils'
@@ -22,8 +22,29 @@ export function DraftRecapPage() {
   const { data: picks = [], isLoading: picksLoading, error: picksError } = useDraftPicks(draftId)
   const error = draftsError ?? picksError
   const { data: playerMap } = usePlayerMap()
+  const { data: rosters = [], isLoading: rostersLoading } = useRosters(leagueId)
+  const { data: owners = [], isLoading: ownersLoading } = useOwners(leagueId)
 
-  const isLoading = draftsLoading || picksLoading
+  const isLoading = draftsLoading || picksLoading || rostersLoading || ownersLoading
+
+  const draft = drafts[0] ?? null
+
+  const slotToName = useMemo(() => {
+    const map = new Map<number, string>()
+    const slotMapping = draft?.slot_to_roster_id
+    if (!slotMapping) return map
+    const ownerMap = new Map(owners.map((o) => [o.user_id, o]))
+    const rosterMap = new Map(rosters.map((r) => [r.roster_id, r]))
+    for (const [slotStr, rosterId] of Object.entries(slotMapping)) {
+      if (rosterId == null) continue
+      const roster = rosterMap.get(rosterId)
+      const owner = roster?.owner_id ? ownerMap.get(roster.owner_id) : undefined
+      if (owner) {
+        map.set(Number(slotStr), owner.team_name ?? owner.display_name)
+      }
+    }
+    return map
+  }, [draft?.slot_to_roster_id, rosters, owners])
 
   const draftBoard = useMemo(() => {
     if (picks.length === 0) return { rounds: 0, cols: 0, grid: new Map() }
@@ -82,8 +103,8 @@ export function DraftRecapPage() {
             {/* Header row */}
             <div className="p-2 text-xs font-medium text-gray-500" />
             {Array.from({ length: draftBoard.cols }, (_, i) => (
-              <div key={i} className="p-2 text-center text-xs font-medium text-gray-500">
-                Slot {i + 1}
+              <div key={i} className="p-2 text-center text-xs font-medium text-gray-500 truncate" title={slotToName.get(i + 1) ?? `Slot ${i + 1}`}>
+                {slotToName.get(i + 1) ?? `Slot ${i + 1}`}
               </div>
             ))}
 
