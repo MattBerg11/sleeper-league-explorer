@@ -9,6 +9,7 @@ import {
   Trophy,
   Scale,
   TrendingUp,
+  Clipboard,
   Menu,
   X,
   Shield,
@@ -28,6 +29,7 @@ const navGroups = [
       { to: '/' as const, label: 'Overview', icon: LayoutDashboard },
       { to: '/matchups' as const, label: 'Matchups', icon: Swords },
       { to: '/playoffs' as const, label: 'Playoffs', icon: Trophy },
+      { to: '/pre-draft' as const, label: 'Pre-Draft', icon: Clipboard },
     ],
   },
   {

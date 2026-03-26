@@ -12,6 +12,7 @@ import { TransactionFeedPage } from '@/pages/transaction-feed'
 import { PlayoffPicturePage } from '@/pages/playoff-picture'
 import { HeadToHeadPage } from '@/pages/head-to-head'
 import { PowerRankingsPage } from '@/pages/power-rankings'
+import { PreDraftPage } from '@/pages/pre-draft'
 import { NotFoundPage } from '@/pages/not-found'
 
 const searchSchema = z.object({
@@ -91,6 +92,12 @@ const rankingsRoute = createRoute({
   component: PowerRankingsPage,
 })
 
+const preDraftRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/pre-draft',
+  component: PreDraftPage,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   playersRoute,
@@ -100,6 +107,7 @@ const routeTree = rootRoute.addChildren([
   playoffsRoute,
   h2hRoute,
   rankingsRoute,
+  preDraftRoute,
 ])
 
 export const router = createRouter({
