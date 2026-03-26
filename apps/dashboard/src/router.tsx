@@ -10,6 +10,7 @@ import { MatchupHistoryPage } from '@/pages/matchup-history'
 import { DraftRecapPage } from '@/pages/draft-recap'
 import { TransactionFeedPage } from '@/pages/transaction-feed'
 import { PlayoffPicturePage } from '@/pages/playoff-picture'
+import { HeadToHeadPage } from '@/pages/head-to-head'
 import { NotFoundPage } from '@/pages/not-found'
 
 const searchSchema = z.object({
@@ -77,6 +78,12 @@ const playoffsRoute = createRoute({
   component: PlayoffPicturePage,
 })
 
+const h2hRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/h2h',
+  component: HeadToHeadPage,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   playersRoute,
@@ -84,6 +91,7 @@ const routeTree = rootRoute.addChildren([
   draftRoute,
   transactionsRoute,
   playoffsRoute,
+  h2hRoute,
 ])
 
 export const router = createRouter({

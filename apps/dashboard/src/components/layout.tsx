@@ -7,6 +7,7 @@ import {
   FileText,
   ArrowRightLeft,
   Trophy,
+  Scale,
   Menu,
   X,
 } from 'lucide-react'
@@ -32,6 +33,7 @@ const navGroups = [
       { to: '/players' as const, label: 'Players', icon: Users },
       { to: '/draft' as const, label: 'Draft', icon: FileText },
       { to: '/transactions' as const, label: 'Transactions', icon: ArrowRightLeft },
+      { to: '/h2h' as const, label: 'Head-to-Head', icon: Scale },
     ],
   },
 ]
