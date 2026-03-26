@@ -227,12 +227,12 @@ export function usePlayerMap() {
     queryFn: async () => {
       if (!supabase) return new Map<string, string>()
       const { data, error } = await supabase
-        .from('players')
-        .select('player_id, first_name, last_name, full_name')
+        .from('player_names')
+        .select('player_id, name')
       if (error) throw error
       const map = new Map<string, string>()
-      for (const p of (data ?? []) as Pick<PlayerRow, 'player_id' | 'first_name' | 'last_name' | 'full_name'>[]) {
-        map.set(p.player_id, p.full_name ?? `${p.first_name} ${p.last_name}`)
+      for (const p of (data ?? []) as { player_id: string; name: string }[]) {
+        map.set(p.player_id, p.name)
       }
       return map
     },

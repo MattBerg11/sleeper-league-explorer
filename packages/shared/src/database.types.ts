@@ -204,3 +204,8 @@ export interface MatchupPairRow {
   team1_team_name: string | null
   team2_team_name: string | null
 }
+
+export interface PlayerNameRow {
+  player_id: string
+  name: string
+}
