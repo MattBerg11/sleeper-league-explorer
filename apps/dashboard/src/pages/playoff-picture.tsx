@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePlayoffBracket, useOwners, useRosters } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +14,7 @@ export function PlayoffPicturePage() {
   const { data: bracket = [], isLoading, error } = usePlayoffBracket(leagueId)
   const { data: owners = [] } = useOwners(leagueId)
   const { data: rosters = [] } = useRosters(leagueId)
+  const { getName } = useDisplayName()
 
   const rosterNameMap = useMemo(() => {
     const map = new Map<number, string>()
@@ -20,11 +22,11 @@ export function PlayoffPicturePage() {
       if (!roster.owner_id) continue
       const owner = owners.find((o) => o.user_id === roster.owner_id)
       if (owner) {
-        map.set(roster.roster_id, owner.team_name ?? owner.display_name)
+        map.set(roster.roster_id, getName(owner))
       }
     }
     return map
-  }, [rosters, owners])
+  }, [rosters, owners, getName])
 
   const rounds = useMemo(() => {
     const roundMap = new Map<number, typeof bracket>()

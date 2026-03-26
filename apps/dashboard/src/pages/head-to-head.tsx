@@ -1,15 +1,17 @@
 ﻿import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { OwnerAvatar } from '@/components/owner-avatar'
 import { useStandings, useAllMatchupPairs } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
 
 export function HeadToHeadPage() {
   const { leagueId } = useLeagueContext()
+  const { getName } = useDisplayName()
   const { data: standings = [], isLoading: standingsLoading, error } = useStandings(leagueId)
   const { data: allMatchups = [], isLoading: matchupsLoading } = useAllMatchupPairs(leagueId)
 
@@ -70,34 +72,36 @@ export function HeadToHeadPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-sm text-gray-400">Team 1</label>
-          <Select
-            value={String(team1Id ?? '')}
-            onChange={(e) => setTeam1Id(e.target.value ? Number(e.target.value) : null)}
-            className="w-full"
-          >
-            <option value="">Select a team...</option>
-            {standings.map((s) => (
-              <option key={s.roster_id} value={s.roster_id}>
-                {s.team_name ?? s.display_name ?? `Team ${s.roster_id}`}
-              </option>
-            ))}
+          <Select value={team1Id != null ? String(team1Id) : '__none__'} onValueChange={(v) => setTeam1Id(v === '__none__' ? null : Number(v))}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a team..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Select a team...</SelectItem>
+              {standings.map((s) => (
+                <SelectItem key={s.roster_id} value={String(s.roster_id)}>
+                  {getName({ display_name: s.display_name ?? `Team ${s.roster_id}`, team_name: s.team_name })}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </div>
         <div>
           <label className="mb-1 block text-sm text-gray-400">Team 2</label>
-          <Select
-            value={String(team2Id ?? '')}
-            onChange={(e) => setTeam2Id(e.target.value ? Number(e.target.value) : null)}
-            className="w-full"
-          >
-            <option value="">Select a team...</option>
-            {standings
-              .filter((s) => s.roster_id !== team1Id)
-              .map((s) => (
-                <option key={s.roster_id} value={s.roster_id}>
-                  {s.team_name ?? s.display_name ?? `Team ${s.roster_id}`}
-                </option>
-              ))}
+          <Select value={team2Id != null ? String(team2Id) : '__none__'} onValueChange={(v) => setTeam2Id(v === '__none__' ? null : Number(v))}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a team..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Select a team...</SelectItem>
+              {standings
+                .filter((s) => s.roster_id !== team1Id)
+                .map((s) => (
+                  <SelectItem key={s.roster_id} value={String(s.roster_id)}>
+                    {getName({ display_name: s.display_name ?? `Team ${s.roster_id}`, team_name: s.team_name })}
+                  </SelectItem>
+                ))}
+            </SelectContent>
           </Select>
         </div>
       </div>
@@ -110,12 +114,12 @@ export function HeadToHeadPage() {
                 <div className="flex items-center gap-3 text-center">
                   <OwnerAvatar
                     avatarId={team1Info?.owner_avatar}
-                    name={team1Info?.team_name ?? team1Info?.display_name ?? 'Team 1'}
+                    name={team1Info ? getName({ display_name: team1Info.display_name ?? 'Team 1', team_name: team1Info.team_name }) : 'Team 1'}
                     size="lg"
                   />
                   <div>
                     <p className="font-semibold text-gray-100">
-                      {team1Info?.team_name ?? team1Info?.display_name}
+                      {team1Info ? getName({ display_name: team1Info.display_name ?? 'Unknown', team_name: team1Info.team_name }) : 'Unknown'}
                     </p>
                     <p className="text-3xl font-bold text-win">{record.team1Wins}</p>
                   </div>
@@ -127,13 +131,13 @@ export function HeadToHeadPage() {
                 <div className="flex items-center gap-3 text-center">
                   <div>
                     <p className="font-semibold text-gray-100">
-                      {team2Info?.team_name ?? team2Info?.display_name}
+                      {team2Info ? getName({ display_name: team2Info.display_name ?? 'Unknown', team_name: team2Info.team_name }) : 'Unknown'}
                     </p>
                     <p className="text-3xl font-bold text-win">{record.team2Wins}</p>
                   </div>
                   <OwnerAvatar
                     avatarId={team2Info?.owner_avatar}
-                    name={team2Info?.team_name ?? team2Info?.display_name ?? 'Team 2'}
+                    name={team2Info ? getName({ display_name: team2Info.display_name ?? 'Team 2', team_name: team2Info.team_name }) : 'Team 2'}
                     size="lg"
                   />
                 </div>

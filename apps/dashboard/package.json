@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@radix-ui/react-select": "^2.2.6",
     "@sleeper-explorer/shared": "workspace:*",
     "@supabase/supabase-js": "^2.49.0",
     "@tanstack/react-query": "^5.68.0",

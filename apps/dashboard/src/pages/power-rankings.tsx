@@ -15,6 +15,7 @@ import { OwnerAvatar } from '@/components/owner-avatar'
 import { ErrorAlert } from '@/components/error-alert'
 import { useStandings, useAllMatchupPairs } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { useDisplayName } from '@/hooks/use-display-name'
 import { cn } from '@/lib/utils'
 
 interface TeamMetrics {
@@ -65,6 +66,7 @@ export function PowerRankingsPage() {
   const { leagueId } = useLeagueContext()
   const { data: standings = [], isLoading: standingsLoading, error: standingsError } = useStandings(leagueId)
   const { data: allMatchups = [], isLoading: matchupsLoading, error: matchupsError } = useAllMatchupPairs(leagueId)
+  const { getName } = useDisplayName()
 
   const [expandedTeam, setExpandedTeam] = useState<number | null>(null)
 
@@ -240,13 +242,13 @@ export function PowerRankingsPage() {
 
                     <OwnerAvatar
                       avatarId={team.ownerAvatar}
-                      name={team.teamName ?? team.displayName}
+                      name={getName({ display_name: team.displayName, team_name: team.teamName })}
                       size="md"
                     />
 
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold text-gray-100">
-                        {team.teamName ?? team.displayName}
+                        {getName({ display_name: team.displayName, team_name: team.teamName })}
                       </p>
                       {team.teamName && (
                         <p className="truncate text-xs text-gray-400">{team.displayName}</p>
@@ -391,6 +393,7 @@ const RADAR_METRICS = [
 const RADAR_COLORS = ['#60a5fa', '#f87171', '#34d399']
 
 function TeamRadarChart({ team }: { team: TeamMetrics }) {
+  const { getName } = useDisplayName()
   const data = RADAR_METRICS.map((m) => ({
     metric: m.label,
     value: team[m.key],
@@ -410,7 +413,7 @@ function TeamRadarChart({ team }: { team: TeamMetrics }) {
           tick={{ fill: 'var(--color-chart-axis)', fontSize: 10 }}
         />
         <Radar
-          name={team.teamName ?? team.displayName}
+          name={getName({ display_name: team.displayName, team_name: team.teamName })}
           dataKey="value"
           stroke="#60a5fa"
           fill="#60a5fa"
@@ -432,6 +435,7 @@ function TeamRadarChart({ team }: { team: TeamMetrics }) {
 }
 
 function TopTeamsRadarChart({ teams }: { teams: TeamMetrics[] }) {
+  const { getName } = useDisplayName()
   const data = RADAR_METRICS.map((m) => {
     const entry: Record<string, string | number> = { metric: m.label }
     teams.forEach((t, i) => {
@@ -458,7 +462,7 @@ function TopTeamsRadarChart({ teams }: { teams: TeamMetrics[] }) {
           {teams.map((t, i) => (
             <Radar
               key={t.rosterId}
-              name={t.teamName ?? t.displayName}
+              name={getName({ display_name: t.displayName, team_name: t.teamName })}
               dataKey={`team${i}`}
               stroke={RADAR_COLORS[i % RADAR_COLORS.length]}
               fill={RADAR_COLORS[i % RADAR_COLORS.length]}
@@ -484,7 +488,7 @@ function TopTeamsRadarChart({ teams }: { teams: TeamMetrics[] }) {
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: RADAR_COLORS[i % RADAR_COLORS.length] }}
             />
-            {t.teamName ?? t.displayName}
+            {getName({ display_name: t.displayName, team_name: t.teamName })}
           </div>
         ))}
       </div>

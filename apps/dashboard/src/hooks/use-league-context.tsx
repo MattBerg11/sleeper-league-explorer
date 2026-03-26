@@ -67,15 +67,15 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
 
   const setLeagueName = useCallback((name: string) => {
     void navigate({
-      from: '/' as const,
-      search: (prev) => ({ ...prev, league: name, season: undefined }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      search: ((prev: Record<string, unknown>) => ({ ...prev, league: name, season: undefined })) as any,
     })
   }, [navigate])
 
   const setSeason = useCallback((s: string) => {
     void navigate({
-      from: '/' as const,
-      search: (prev) => ({ ...prev, season: s }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      search: ((prev: Record<string, unknown>) => ({ ...prev, season: s })) as any,
     })
   }, [navigate])
 

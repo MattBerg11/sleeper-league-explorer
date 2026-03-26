@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDrafts, useDraftPicks, useOwners, usePlayerMap, usePlayerSeasonPoints, useRosters, useTradedPicks } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
 import { cn } from '@/lib/utils'
 import { FileX } from 'lucide-react'
@@ -20,6 +21,7 @@ const POSITION_COLORS: Record<string, string> = {
 
 export function DraftRecapPage() {
   const { leagueId } = useLeagueContext()
+  const { getName } = useDisplayName()
   const [selectedDraftIndex, setSelectedDraftIndex] = useState(0)
   const { data: drafts = [], isLoading: draftsLoading, error: draftsError } = useDrafts(leagueId)
   const draft = drafts[selectedDraftIndex] ?? null
@@ -57,11 +59,11 @@ export function DraftRecapPage() {
       const roster = rosterMap.get(rosterId)
       const owner = roster?.owner_id ? ownerMap.get(roster.owner_id) : undefined
       if (owner) {
-        map.set(Number(slotStr), owner.team_name ?? owner.display_name)
+        map.set(Number(slotStr), getName(owner))
       }
     }
     return map
-  }, [draft?.slot_to_roster_id, rosters, owners])
+  }, [draft?.slot_to_roster_id, rosters, owners, getName])
 
   const tradedPickSet = useMemo(() => {
     const set = new Set<string>()
@@ -139,16 +141,17 @@ export function DraftRecapPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Draft Recap</h2>
         {drafts.length > 1 && (
-          <Select
-            className="w-48"
-            value={selectedDraftIndex}
-            onChange={(e) => setSelectedDraftIndex(Number(e.target.value))}
-          >
-            {drafts.map((d, i) => (
-              <option key={d.draft_id} value={i}>
-                {d.season} {'\u2014'} {d.metadata && typeof d.metadata === 'object' && 'name' in d.metadata ? String(d.metadata.name) : `Draft ${i + 1}`}
-              </option>
-            ))}
+          <Select value={String(selectedDraftIndex)} onValueChange={(v) => setSelectedDraftIndex(Number(v))}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select draft" />
+            </SelectTrigger>
+            <SelectContent>
+              {drafts.map((d, i) => (
+                <SelectItem key={d.draft_id} value={String(i)}>
+                  {d.season} {'\u2014'} {d.metadata && typeof d.metadata === 'object' && 'name' in d.metadata ? String(d.metadata.name) : `Draft ${i + 1}`}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         )}
       </div>

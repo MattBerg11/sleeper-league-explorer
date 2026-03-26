@@ -14,7 +14,7 @@ import {
   X,
   Shield,
 } from 'lucide-react'
-import { Select } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useDisplayName } from '@/hooks/use-display-name'
@@ -72,33 +72,44 @@ export function Layout({ children }: { children: React.ReactNode }) {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-gray-700/50 px-6">
-          <h1 className="text-lg font-bold text-accent">Sleeper Explorer</h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-5 w-5" />
-          </Button>
+        <div className="flex flex-col border-b border-gray-700/50 px-6 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-bold text-accent">League Explorer</h1>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          {lastSynced && (
+            <span
+              className="mt-1 text-[10px] text-gray-500"
+              title={new Date(lastSynced).toLocaleString()}
+            >
+              Synced {formatRelativeTime(new Date(lastSynced).getTime())}
+            </span>
+          )}
         </div>
 
         <div className="border-b border-gray-700/50 px-4 py-3">
           <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">League</label>
-          <Select
-            value={leagueName}
-            onChange={(e) => setLeagueName(e.target.value)}
-            className="w-full"
-          >
-            {leagueFamilies.map((family) => (
-              <option key={family.name} value={family.name}>
-                {family.name}
-              </option>
-            ))}
-            {leagueFamilies.length === 0 && (
-              <option value={leagueName}>Loading…</option>
-            )}
+          <Select value={leagueName} onValueChange={setLeagueName}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select league…" />
+            </SelectTrigger>
+            <SelectContent>
+              {leagueFamilies.map((family) => (
+                <SelectItem key={family.name} value={family.name}>
+                  {family.name}
+                </SelectItem>
+              ))}
+              {leagueFamilies.length === 0 && (
+                <SelectItem value={leagueName}>Loading…</SelectItem>
+              )}
+            </SelectContent>
           </Select>
         </div>
 
@@ -171,26 +182,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {leagueName}{season ? ` — ${season}` : ''}
             </h2>
             <div className="flex items-center gap-2">
-              <Select
-                value={season}
-                onChange={(e) => setSeason(e.target.value)}
-                className="w-28 lg:w-36"
-              >
-                {availableSeasons.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-                {availableSeasons.length === 0 && (
-                  <option value="">Loading…</option>
-                )}
+              <Select value={season} onValueChange={setSeason}>
+                <SelectTrigger className="w-28 lg:w-36">
+                  <SelectValue placeholder="Season" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSeasons.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                  {availableSeasons.length === 0 && (
+                    <SelectItem value="__loading__">Loading…</SelectItem>
+                  )}
+                </SelectContent>
               </Select>
-              {lastSynced && (
-                <span
-                  className="hidden text-xs text-gray-500 sm:inline"
-                  title={new Date(lastSynced).toLocaleString()}
-                >
-                  Synced {formatRelativeTime(new Date(lastSynced).getTime())}
-                </span>
-              )}
               <ThemeToggle />
             </div>
           </div>

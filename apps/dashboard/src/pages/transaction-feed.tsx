@@ -2,10 +2,11 @@ import { useState, useMemo } from 'react'
 import { ArrowRightLeft, Plus, Minus, FileX } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Select } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTransactions, usePlayerMap, useRosters, useOwners } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
 import { formatRelativeTime } from '@/lib/utils'
 
@@ -29,20 +30,22 @@ export function TransactionFeedPage() {
   const { data: playerMap } = usePlayerMap()
   const { data: rosters = [] } = useRosters(leagueId)
   const { data: owners = [] } = useOwners(leagueId)
+  const { getName } = useDisplayName()
   const [typeFilter, setTypeFilter] = useState('')
 
   const rosterToOwnerName = useMemo(() => {
-    const ownerMap = new Map(owners.map((o) => [o.user_id, o.team_name ?? o.display_name]))
+    const ownerMap = new Map(owners.map((o) => [o.user_id, o]))
     const map = new Map<number, string>()
     for (const r of rosters) {
       if (r.owner_id) {
-        map.set(r.roster_id, ownerMap.get(r.owner_id) ?? `Roster ${r.roster_id}`)
+        const owner = ownerMap.get(r.owner_id)
+        map.set(r.roster_id, owner ? getName(owner) : `Roster ${r.roster_id}`)
       } else {
         map.set(r.roster_id, `Roster ${r.roster_id}`)
       }
     }
     return map
-  }, [rosters, owners])
+  }, [rosters, owners, getName])
 
   const filtered = useMemo(() => {
     if (!typeFilter) return transactions
@@ -75,15 +78,16 @@ export function TransactionFeedPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Transactions</h2>
-        <Select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="w-40"
-        >
-          <option value="">All Types</option>
-          {types.map((t) => (
-            <option key={t} value={t}>{TYPE_LABELS[t] ?? t}</option>
-          ))}
+        <Select value={typeFilter || '__all__'} onValueChange={(v) => setTypeFilter(v === '__all__' ? '' : v)}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All Types</SelectItem>
+            {types.map((t) => (
+              <SelectItem key={t} value={t}>{TYPE_LABELS[t] ?? t}</SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
 

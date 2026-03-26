@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Search, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -58,16 +58,17 @@ export function PlayerExplorerPage() {
             className="pl-10"
           />
         </div>
-        <Select
-          value={position}
-          onChange={(e) => handlePositionChange(e.target.value)}
-          className="w-32"
-        >
-          {POSITIONS.map((pos) => (
-            <option key={pos} value={pos === 'All' ? '' : pos}>
-              {pos}
-            </option>
-          ))}
+        <Select value={position || '__all__'} onValueChange={(v) => handlePositionChange(v === '__all__' ? '' : v)}>
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            {POSITIONS.map((pos) => (
+              <SelectItem key={pos} value={pos === 'All' ? '__all__' : pos}>
+                {pos}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
 

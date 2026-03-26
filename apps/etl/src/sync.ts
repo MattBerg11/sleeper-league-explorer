@@ -38,13 +38,14 @@ import {
  *
  *  Sync Modes:
  *  - full:         Runs everything (nfl_state, players, all league data for all weeks)
- *  - daily:        nfl_state + players only (cron daily at 06:00 UTC)
+ *  - daily:        nfl_state + league metadata (leagues, owners, rosters)
+ *                  Does NOT include players — use 'players-only' separately.
+ *  - players-only: Players only (heavy — 11k+ rows). Run separately on its own schedule.
  *  - leagues-only: Incremental league data sync (cron every 6h)
  *                  Matchups/transactions limited to current + previous week.
  *                  Drafts skipped if already complete in DB.
  *  - initiate:     One-time sync for NEW leagues not yet in DB.
  *                  Runs full historical sync (all weeks) for new leagues only.
- *  - players-only: (legacy) Players only — prefer 'daily' mode instead.
  *
  * ═══════════════════════════════════════════════════════════════════════
  */
@@ -663,14 +664,24 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
   const client = createSleeperClient()
   const results: SyncEntityResult[] = []
 
-  // --- daily mode: nfl_state + players ---
+  // --- daily mode: nfl_state + league metadata (no players) ---
   if (syncMode === 'daily') {
-    console.log('Running daily sync (nfl_state + players)...')
+    console.log('Running daily sync (nfl_state + league metadata)...')
     const nflStateResult = await syncNFLState(client, supabase)
     results.push(nflStateResult)
 
-    const playersResult = await syncPlayers(client, supabase)
-    results.push(playersResult)
+    // Sync leagues + owners + rosters (metadata that can change frequently)
+    const { result: leaguesResult, leagues } = await syncLeagues(client, supabase, leagueIds)
+    results.push(leaguesResult)
+
+    if (leaguesResult.success && leagues.length > 0) {
+      const ownersResult = await syncOwners(client, supabase, leagues)
+      results.push(ownersResult)
+
+      const rostersResult = await syncRosters(client, supabase, leagues)
+      results.push(rostersResult)
+    }
+
     return { results }
   }
 

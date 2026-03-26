@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useStandings, useRosters, useOwners, useLeagues } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
 import { OwnerAvatar } from '@/components/owner-avatar'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,7 @@ export function LeagueOverviewPage() {
   const { data: rosters = [] } = useRosters(leagueId)
   const { data: owners = [] } = useOwners(leagueId)
   const { data: leagues = [] } = useLeagues()
+  const { getName } = useDisplayName()
   const [sorting, setSorting] = useState<SortingState>([{ id: 'total_points_for', desc: true }])
   const [activeTab, setActiveTab] = useState<TabId>('standings')
 
@@ -73,7 +75,7 @@ export function LeagueOverviewPage() {
         const benchCount = Math.max(0, totalCount - starterCount - irCount - taxiCount)
         return {
           ...r,
-          ownerName: owner?.team_name ?? owner?.display_name ?? `Team ${r.roster_id}`,
+          ownerName: owner ? getName(owner) : `Team ${r.roster_id}`,
           starterCount,
           benchCount,
           irCount,
@@ -81,7 +83,7 @@ export function LeagueOverviewPage() {
           totalCount,
         }
       }),
-    [rosters, ownerMap],
+    [rosters, ownerMap, getName],
   )
 
   const league = useMemo(
@@ -119,7 +121,7 @@ export function LeagueOverviewPage() {
         <div className="flex items-center gap-2">
           <OwnerAvatar
             avatarId={info.row.original.owner_avatar}
-            name={info.row.original.team_name ?? info.row.original.display_name ?? 'Unknown'}
+            name={getName({ display_name: info.row.original.display_name ?? 'Unknown', team_name: info.row.original.team_name })}
             size="sm"
           />
           <Link
@@ -127,7 +129,7 @@ export function LeagueOverviewPage() {
             search={(prev) => prev}
             className="font-medium text-gray-100 hover:text-accent hover:underline"
           >
-            {info.row.original.team_name ?? info.row.original.display_name ?? `Team ${info.row.original.roster_id}`}
+            {getName({ display_name: info.row.original.display_name ?? `Team ${info.row.original.roster_id}`, team_name: info.row.original.team_name })}
           </Link>
         </div>
       ),
@@ -182,7 +184,7 @@ export function LeagueOverviewPage() {
         <span className="font-mono text-gray-400">{info.getValue().toFixed(2)}</span>
       ),
     }),
-  ], [rankMap])
+  ], [rankMap, getName])
 
   const table = useReactTable({
     data: standings,
@@ -248,7 +250,7 @@ export function LeagueOverviewPage() {
             <Trophy className="h-4 w-4 text-highlight" />
           </CardHeader>
           <CardContent>
-            <p className="text-xl font-bold text-highlight">{highestScorer?.team_name ?? highestScorer?.display_name ?? 'N/A'}</p>
+            <p className="text-xl font-bold text-highlight">{highestScorer ? getName({ display_name: highestScorer.display_name ?? 'N/A', team_name: highestScorer.team_name }) : 'N/A'}</p>
             <p className="text-sm text-gray-400">{highestScorer?.total_points_for.toFixed(2) ?? '0'} pts</p>
           </CardContent>
         </Card>
@@ -334,9 +336,9 @@ export function LeagueOverviewPage() {
               {sortedByPoints.map((team, idx) => (
                 <div key={team.roster_id} className="flex items-center gap-3 rounded-lg border border-gray-700/50 p-3">
                   <span className="w-8 text-center font-mono text-lg font-bold text-gray-400">{idx + 1}</span>
-                  <OwnerAvatar avatarId={team.owner_avatar} name={team.team_name ?? team.display_name ?? 'Unknown'} size="md" />
+                  <OwnerAvatar avatarId={team.owner_avatar} name={getName({ display_name: team.display_name ?? 'Unknown', team_name: team.team_name })} size="md" />
                   <div className="flex-1">
-                    <div className="font-medium text-gray-100">{team.team_name ?? team.display_name}</div>
+                    <div className="font-medium text-gray-100">{getName({ display_name: team.display_name ?? 'Unknown', team_name: team.team_name })}</div>
                     <div className="text-xs text-gray-400">{team.wins}W-{team.losses}L</div>
                   </div>
                   <div className="text-right">

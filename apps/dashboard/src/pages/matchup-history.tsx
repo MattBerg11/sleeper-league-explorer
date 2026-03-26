@@ -3,11 +3,12 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ChevronLeft, ChevronRight, CalendarX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMatchupPairs, useAllMatchupPairs, useNFLState } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
+import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
 import { cn } from '@/lib/utils'
 import { MAX_REGULAR_SEASON_WEEKS } from '@sleeper-explorer/shared'
@@ -20,6 +21,7 @@ const TEAM_COLORS = [
 
 export function MatchupHistoryPage() {
   const { leagueId } = useLeagueContext()
+  const { getName } = useDisplayName()
   const { data: nflState } = useNFLState()
   const [week, setWeek] = useState(1)
 
@@ -40,14 +42,14 @@ export function MatchupHistoryPage() {
     const teamMap = new Map<number, string>()
     for (const m of allMatchups) {
       if (!teamMap.has(m.team1_roster_id)) {
-        teamMap.set(m.team1_roster_id, m.team1_team_name ?? m.team1_name ?? `Team ${m.team1_roster_id}`)
+        teamMap.set(m.team1_roster_id, getName({ display_name: m.team1_name ?? `Team ${m.team1_roster_id}`, team_name: m.team1_team_name }))
       }
       if (!teamMap.has(m.team2_roster_id)) {
-        teamMap.set(m.team2_roster_id, m.team2_team_name ?? m.team2_name ?? `Team ${m.team2_roster_id}`)
+        teamMap.set(m.team2_roster_id, getName({ display_name: m.team2_name ?? `Team ${m.team2_roster_id}`, team_name: m.team2_team_name }))
       }
     }
     return Array.from(teamMap.entries()).map(([id, name]) => ({ id, name }))
-  }, [allMatchups])
+  }, [allMatchups, getName])
 
   const chartData = useMemo(() => {
     const weekData = new Map<number, Record<string, number>>()
@@ -101,14 +103,15 @@ export function MatchupHistoryPage() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Select
-            value={String(week)}
-            onChange={(e) => setWeek(Number(e.target.value))}
-            className="w-32"
-          >
-            {Array.from({ length: MAX_REGULAR_SEASON_WEEKS }, (_, i) => i + 1).map((w) => (
-              <option key={w} value={w}>Week {w}</option>
-            ))}
+          <Select value={String(week)} onValueChange={(v) => setWeek(Number(v))}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Week" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: MAX_REGULAR_SEASON_WEEKS }, (_, i) => i + 1).map((w) => (
+                <SelectItem key={w} value={String(w)}>Week {w}</SelectItem>
+              ))}
+            </SelectContent>
           </Select>
           <Button
             variant="outline"
@@ -141,7 +144,7 @@ export function MatchupHistoryPage() {
                   <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
                     <div className="flex-1 text-center">
                       <p className={`font-semibold ${team1Wins ? 'text-win' : 'text-gray-100'}`}>
-                        {matchup.team1_team_name ?? matchup.team1_name ?? `Team ${matchup.team1_roster_id}`}
+                        {getName({ display_name: matchup.team1_name ?? `Team ${matchup.team1_roster_id}`, team_name: matchup.team1_team_name })}
                       </p>
                       <p className={`text-2xl font-bold ${team1Wins ? 'text-win' : 'text-gray-300'}`}>
                         {matchup.team1_points?.toFixed(2) ?? '-'}
@@ -151,7 +154,7 @@ export function MatchupHistoryPage() {
                     <span className="px-4 text-lg font-bold text-gray-500">vs</span>
                     <div className="flex-1 text-center">
                       <p className={`font-semibold ${team2Wins ? 'text-win' : 'text-gray-100'}`}>
-                        {matchup.team2_team_name ?? matchup.team2_name ?? `Team ${matchup.team2_roster_id}`}
+                        {getName({ display_name: matchup.team2_name ?? `Team ${matchup.team2_roster_id}`, team_name: matchup.team2_team_name })}
                       </p>
                       <p className={`text-2xl font-bold ${team2Wins ? 'text-win' : 'text-gray-300'}`}>
                         {matchup.team2_points?.toFixed(2) ?? '-'}
