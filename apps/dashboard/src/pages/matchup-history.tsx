@@ -1,17 +1,29 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useMatchupPairs, useAllMatchupPairs } from '@/hooks/use-league-data'
+import { useMatchupPairs, useAllMatchupPairs, useNFLState } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { ErrorAlert } from '@/components/error-alert'
 import { MAX_REGULAR_SEASON_WEEKS } from '@sleeper-explorer/shared'
 
 export function MatchupHistoryPage() {
   const { leagueId } = useLeagueContext()
+  const { data: nflState } = useNFLState()
   const [week, setWeek] = useState(1)
+
+  // Auto-set week to current NFL week on first load
+  useEffect(() => {
+    if (nflState) {
+      const currentWeek = nflState.display_week || nflState.week || 1
+      // Clamp to valid range
+      const clampedWeek = Math.max(1, Math.min(currentWeek, MAX_REGULAR_SEASON_WEEKS))
+      setWeek(clampedWeek)
+    }
+  }, [nflState])
+
   const { data: matchups = [], isLoading, error } = useMatchupPairs(leagueId, week)
   const { data: allMatchups = [] } = useAllMatchupPairs(leagueId)
 

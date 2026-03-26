@@ -11,6 +11,7 @@ import type {
   DraftPickRow,
   PlayoffBracketRow,
   OwnerRow,
+  NFLStateRow,
 } from '@sleeper-explorer/shared'
 
 const STALE_TIME = 5 * 60 * 1000
@@ -236,5 +237,26 @@ export function usePlayerMap() {
       return map
     },
     staleTime: 30 * 60 * 1000,
+  })
+}
+
+export function useNFLState() {
+  return useQuery<NFLStateRow | null>({
+    queryKey: ['nfl-state'],
+    queryFn: async () => {
+      if (!supabase) return null
+      const { data, error } = await supabase
+        .from('nfl_state')
+        .select('*')
+        .order('synced_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (error) {
+        if (error.code === 'PGRST116') return null // no rows
+        throw error
+      }
+      return data as NFLStateRow
+    },
+    staleTime: 30 * 60 * 1000, // 30 minutes - NFL state rarely changes
   })
 }
