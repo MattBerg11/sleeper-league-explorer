@@ -331,3 +331,51 @@ These are documented, intentional design decisions:
 3. **GitHub Actions SHA pinning**: Must be enforced on every action
 4. **Dependency updates**: Regular `pnpm audit` runs
 5. **Vite env prefix**: Must never be changed to expose server-side vars
+
+---
+
+## Handoff Workflow
+
+After completing your security review and producing findings, format your output as a **structured handoff document** that can be consumed by downstream agents in the review pipeline.
+
+Your handoff document must contain:
+1. **Summary of Findings** — a brief overview of the review scope, threat model, and overall security posture
+2. **Prioritized Findings** — a list of security issues and improvements, each with enough detail for the Feature Planner agent to produce implementation-ready issue specs
+
+Each finding must include:
+- **Finding ID**: Sequential identifier in the format `SEV-XXX` (e.g., SEV-001, SEV-002)
+- **Severity**: Must Fix / Should Fix / Consider
+- **OWASP Category**: The relevant OWASP Top 10 category (e.g., A01: Broken Access Control)
+- **Description**: What the vulnerability or gap is, with specific evidence from the codebase
+- **Remediation Steps**: Concrete steps to fix the issue, with code patterns or configuration changes
+- **Affected Files**: List of files that are impacted or need changes
+- **Risk Assessment**: Likelihood × Impact analysis, considering the project's specific threat profile
+
+This output is designed to be consumed by the **Feature Planner** agent, which will expand each finding into a full implementation-ready GitHub Issue spec. The Feature Planner's output will then be passed to the **GitHub Issues & Projects** agent for creation in the repository.
+
+### Handoff Format
+
+Structure your output as follows:
+
+```markdown
+## Security Review Handoff
+
+### Summary
+
+<!-- Brief overview: what was reviewed, threat model context, overall security posture -->
+
+### Findings
+
+#### SEV-001: [Title]
+
+- **Severity**: [Must Fix | Should Fix | Consider]
+- **OWASP Category**: [Category code and name]
+- **Description**: [What the vulnerability or gap is, with evidence]
+- **Remediation**: [Step-by-step fix instructions]
+- **Affected Files**: [List of file paths]
+- **Risk**: [Likelihood × Impact assessment]
+
+#### SEV-002: [Title]
+
+...
+```

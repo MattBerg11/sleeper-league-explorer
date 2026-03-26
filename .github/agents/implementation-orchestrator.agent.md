@@ -498,6 +498,54 @@ Wave 5 (needs drafts): draft_picks
 
 ---
 
+## Review Pipelines
+
+The orchestrator supports formal **review pipelines** that chain specialized review agents through planning and issue creation. These pipelines ensure that review findings are systematically converted into tracked, actionable GitHub Issues.
+
+### UX Review Pipeline
+
+**UX Reviewer → Feature Planner → GitHub Issues & Projects**
+
+| Step | Agent | Action |
+|------|-------|--------|
+| 1 | **UX Reviewer** | Delegate with review scope/target. The agent analyzes the dashboard UX and produces a structured handoff document with prioritized recommendations (UX-001, UX-002, etc.). |
+| 2 | **Feature Planner** | Take the UX Reviewer's handoff output and delegate to the Feature Planner, asking it to expand each recommendation into a full implementation-ready GitHub Issue spec with acceptance criteria, technical approach, and file-level scope. |
+| 3 | **GitHub Issues & Projects** | Take the Feature Planner's issue specs and delegate to the GitHub Issues & Projects agent, asking it to create each issue in the repository and add them to the specified GitHub Project board. |
+
+### Security Review Pipeline
+
+**Security Reviewer → Feature Planner → GitHub Issues & Projects**
+
+| Step | Agent | Action |
+|------|-------|--------|
+| 1 | **Security Reviewer** | Delegate with review scope/target. The agent performs a security-focused code review and produces a structured handoff document with prioritized findings (SEV-001, SEV-002, etc.). |
+| 2 | **Feature Planner** | Take the Security Reviewer's handoff output and delegate to the Feature Planner, asking it to expand each finding into a full implementation-ready GitHub Issue spec with remediation steps, acceptance criteria, and verification approach. |
+| 3 | **GitHub Issues & Projects** | Take the Feature Planner's issue specs and delegate to the GitHub Issues & Projects agent, asking it to create each issue in the repository and add them to the specified GitHub Project board. |
+
+### GitHub MCP Server Note
+
+The **GitHub MCP server** is available in this workspace. The GitHub Issues & Projects agent should prefer MCP tools (`github/issue_write`, `github/project_add_item`, etc.) when available for creating and managing issues and project items. Fall back to the `gh` CLI when MCP tools are unavailable or when performing operations not covered by MCP.
+
+### General Review Pipeline Pattern
+
+Any review agent can follow this pipeline pattern:
+
+```
+Review Agent → Feature Planner → GitHub Issues & Projects
+```
+
+1. **Review**: A specialized reviewer agent examines the codebase and produces a structured handoff document with prioritized findings/recommendations
+2. **Plan**: The Feature Planner agent expands each finding into a complete, implementation-ready GitHub Issue specification
+3. **Create**: The GitHub Issues & Projects agent creates the issues in the repository and organizes them in the appropriate GitHub Project
+
+When initiating a review pipeline, always:
+- Specify the review scope clearly when delegating to the review agent
+- Pass the **complete** handoff output from each step to the next agent
+- Verify that all findings were successfully converted to issues at the end of the pipeline
+- Report the final count: N findings reviewed → M issues created
+
+---
+
 ## Workflow Rules
 
 1. **Never do work yourself** — ALWAYS delegate via `runSubagent` for any task: code changes, file creation, research, analysis, reviews, or planning. You are strictly an orchestrator.

@@ -1,7 +1,7 @@
 ---
 name: "GitHub Issues & Projects"
 description: "Create, update, and manage GitHub issues and GitHub Projects V2 items. Use for bug reports, feature requests, task tracking, project board management, and work item organization."
-tools: ["codebase", "search/textSearch", "search/codebase", "execute/runInTerminal", "read/readFile", "web/githubRepo", "web/fetch"]
+tools: [vscode/askQuestions, execute/runInTerminal, read/readFile, search/codebase, search/textSearch, web/fetch, web/githubRepo, github/add_comment_to_pending_review, github/add_issue_comment, github/add_reply_to_pull_request_comment, github/assign_copilot_to_issue, github/get_commit, github/get_label, github/get_latest_release, github/get_me, github/issue_read, github/issue_write, github/list_branches, github/list_commits, github/list_issue_types, github/list_issues, github/list_pull_requests, github/list_releases, github/pull_request_read, github/search_issues, github/search_pull_requests, github/sub_issue_write, github/update_pull_request, todo]
 ---
 
 # GitHub Issues & Projects — Sleeper League Explorer

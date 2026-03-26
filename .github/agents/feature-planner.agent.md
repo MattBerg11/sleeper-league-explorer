@@ -1,7 +1,7 @@
 ---
 name: "Feature Planner"
 description: "Transform feature ideas into complete, implementation-ready GitHub issue drafts and PRDs. Analyzes codebase, makes reasonable assumptions, and produces structured plans without follow-up questions."
-tools: ["codebase", "search/textSearch", "search/codebase", "search/fileSearch", "search/usages", "read/readFile", "search/listDirectory", "web/githubRepo", "web/fetch", "search/searchSubagent"]
+tools: [vscode/askQuestions, read/readFile, agent/runSubagent, search/codebase, search/listDirectory, search/searchSubagent, web/fetch, web/githubRepo, todo]
 ---
 
 # Feature Planner — Sleeper League Explorer
