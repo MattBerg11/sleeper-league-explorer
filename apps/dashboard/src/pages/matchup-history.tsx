@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts'
 import { ChevronLeft, ChevronRight, CalendarX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useMatchupPairs, useAllMatchupPairs, useNFLState } from '@/hooks/use-league-data'
+import { useMatchupPairs, useAllMatchupPairs, useNFLState, useLeagues } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
@@ -23,7 +23,11 @@ export function MatchupHistoryPage() {
   const { leagueId } = useLeagueContext()
   const { getName } = useDisplayName()
   const { data: nflState } = useNFLState()
+  const { data: leagues = [] } = useLeagues()
   const [week, setWeek] = useState(1)
+
+  const currentLeague = leagues.find((l) => l.league_id === leagueId)
+  const playoffStartWeek = (currentLeague?.settings?.playoff_week_start as number | undefined) ?? 15
 
   // Auto-set week to current NFL week on first load
   useEffect(() => {
@@ -65,10 +69,10 @@ export function MatchupHistoryPage() {
       weekData.set(m.week, entry)
     }
 
-    return Array.from(weekData.entries())
+    const computed = Array.from(weekData.entries())
       .map(([w, data]) => ({
         week: `Wk ${w}`,
-        avgScore: data._count > 0 ? Math.round((data._total / data._count) * 100) / 100 : 0,
+        avgScore: data._count > 0 ? Math.round((data._total / data._count) * 100) / 100 : undefined,
         ...Object.fromEntries(
           Object.entries(data)
             .filter(([k]) => k.startsWith('team_'))
@@ -76,6 +80,14 @@ export function MatchupHistoryPage() {
         ),
       }))
       .sort((a, b) => parseInt(a.week.slice(3)) - parseInt(b.week.slice(3)))
+
+    const full: typeof computed = []
+    for (let w = 1; w <= MAX_REGULAR_SEASON_WEEKS; w++) {
+      const label = `Wk ${w}`
+      const existing = computed.find((d) => d.week === label)
+      full.push(existing ?? { week: label, avgScore: undefined })
+    }
+    return full
   }, [allMatchups])
 
   const [enabledTeams, setEnabledTeams] = useState<Set<number>>(new Set())
@@ -135,6 +147,13 @@ export function MatchupHistoryPage() {
         <ErrorAlert error={error} title="Error loading matchups" />
       ) : (
         <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2">
+          {week >= playoffStartWeek && (
+            <div className="col-span-full">
+              <Badge variant="outline" className="border-accent text-accent-foreground bg-accent/10 text-sm">
+                Playoff Week {week}
+              </Badge>
+            </div>
+          )}
           {matchups.map((matchup) => {
             const team1Wins = (matchup.team1_points ?? 0) > (matchup.team2_points ?? 0)
             const team2Wins = (matchup.team2_points ?? 0) > (matchup.team1_points ?? 0)
@@ -220,7 +239,14 @@ export function MatchupHistoryPage() {
                   labelStyle={{ color: 'var(--color-chart-tooltip-text)' }}
                   itemStyle={{ color: 'var(--color-chart-line)' }}
                 />
-                <Line type="monotone" dataKey="avgScore" stroke="var(--color-chart-line)" strokeWidth={2} dot={{ fill: 'var(--color-chart-line)' }} name="League Avg" />
+                <ReferenceArea
+                  x1={`Wk ${playoffStartWeek}`}
+                  x2={`Wk ${MAX_REGULAR_SEASON_WEEKS}`}
+                  fill="var(--color-accent)"
+                  fillOpacity={0.08}
+                  label={{ value: 'Playoffs', position: 'insideTop', fill: 'var(--color-muted-foreground)', fontSize: 11, fontWeight: 600 }}
+                />
+                <Line type="monotone" dataKey="avgScore" stroke="var(--color-chart-line)" strokeWidth={2} dot={{ fill: 'var(--color-chart-line)' }} name="League Avg" connectNulls={false} />
                 {teams.map((team, idx) =>
                   enabledTeams.has(team.id) ? (
                     <Line
@@ -231,6 +257,7 @@ export function MatchupHistoryPage() {
                       strokeWidth={1.5}
                       dot={false}
                       name={team.name}
+                      connectNulls={false}
                     />
                   ) : null,
                 )}

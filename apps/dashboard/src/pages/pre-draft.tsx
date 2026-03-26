@@ -301,13 +301,13 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName }: TeamCardPr
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg bg-bg-primary/50 p-2.5 text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Waiver Budget</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Waiver Budget</p>
             <p className="text-sm font-bold text-gray-100">
               {budgetUsed !== null ? `$${budgetUsed}` : 'N/A'}
             </p>
           </div>
           <div className="rounded-lg bg-bg-primary/50 p-2.5 text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Draft Picks</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Draft Picks</p>
             <p className="text-sm font-bold text-gray-100">{pickInfo.totalPicks}</p>
             {(pickInfo.tradedAway > 0 || pickInfo.acquired > 0) && (
               <p className="text-[10px] text-gray-500">
@@ -318,7 +318,7 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName }: TeamCardPr
             )}
           </div>
           <div className="rounded-lg bg-bg-primary/50 p-2.5 text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Strength</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Strength</p>
             <Badge
               className={cn(
                 'mt-1 text-[10px]',
@@ -329,7 +329,7 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName }: TeamCardPr
             </Badge>
           </div>
           <div className="rounded-lg bg-bg-primary/50 p-2.5 text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Roster Size</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Roster Size</p>
             <p className="text-sm font-bold text-gray-100">{rosterSize}</p>
           </div>
         </div>
@@ -501,14 +501,14 @@ export function PreDraftPage() {
     return (
       <div className="space-y-6">
         <HeaderSkeleton />
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr_280px]">
-          <ActivityFeedSkeleton />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <TeamCardSkeleton key={i} />
-            ))}
-          </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <TeamCardSkeleton key={i} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
           <DraftCapitalSkeleton />
+          <ActivityFeedSkeleton />
         </div>
       </div>
     )
@@ -544,65 +544,34 @@ export function PreDraftPage() {
         <StatusBadge status={leagueStatus} />
       </div>
 
-      {/* 3-column layout */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr_280px]">
-        {/* Left column: Activity Feed */}
-        <div className="order-2 lg:order-1">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ArrowRightLeft className="h-4 w-4 text-accent" />
-                Recent Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {recentTransactions.length === 0 ? (
-                <p className="text-center text-sm text-gray-500">No recent transactions</p>
-              ) : (
-                recentTransactions.map((tx) => (
-                  <ActivityItem
-                    key={tx.transaction_id}
-                    type={tx.type}
-                    adds={tx.adds}
-                    drops={tx.drops}
-                    created={tx.created}
-                    playerMap={playerMap}
-                    rosterToName={rosterToName}
-                  />
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      {/* Team Cards Gallery — full width responsive grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {rosters.map((roster) => {
+          const owner = roster.owner_id ? ownerMap.get(roster.owner_id) : undefined
+          return (
+            <TeamCard
+              key={roster.roster_id}
+              roster={roster}
+              owner={owner}
+              strengthTier={strengthTiers.get(roster.roster_id) ?? 'Average'}
+              pickInfo={teamPicks.get(roster.roster_id) ?? {
+                rosterId: roster.roster_id,
+                basePicks: totalRosters,
+                tradedAway: 0,
+                acquired: 0,
+                totalPicks: totalRosters,
+                picksByRound: new Map(),
+              }}
+              getName={getName}
+            />
+          )
+        })}
+      </div>
 
-        {/* Center: Team Cards Gallery */}
-        <div className="order-1 lg:order-2">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {rosters.map((roster) => {
-              const owner = roster.owner_id ? ownerMap.get(roster.owner_id) : undefined
-              return (
-                <TeamCard
-                  key={roster.roster_id}
-                  roster={roster}
-                  owner={owner}
-                  strengthTier={strengthTiers.get(roster.roster_id) ?? 'Average'}
-                  pickInfo={teamPicks.get(roster.roster_id) ?? {
-                    rosterId: roster.roster_id,
-                    basePicks: totalRosters,
-                    tradedAway: 0,
-                    acquired: 0,
-                    totalPicks: totalRosters,
-                    picksByRound: new Map(),
-                  }}
-                  getName={getName}
-                />
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Right column: Draft Capital */}
-        <div className="order-3">
+      {/* Draft Capital + Activity Feed side by side */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+        {/* Draft Capital Table — left, wider */}
+        <div className="overflow-x-auto">
           <DraftCapitalTable
             rosters={rosters}
             owners={owners}
@@ -611,6 +580,33 @@ export function PreDraftPage() {
             getName={getName}
           />
         </div>
+
+        {/* Activity Feed — right, narrower */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ArrowRightLeft className="h-4 w-4 text-accent" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentTransactions.length === 0 ? (
+              <p className="text-center text-sm text-gray-500">No recent transactions</p>
+            ) : (
+              recentTransactions.map((tx) => (
+                <ActivityItem
+                  key={tx.transaction_id}
+                  type={tx.type}
+                  adds={tx.adds}
+                  drops={tx.drops}
+                  created={tx.created}
+                  playerMap={playerMap}
+                  rosterToName={rosterToName}
+                />
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

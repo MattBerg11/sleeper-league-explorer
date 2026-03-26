@@ -13,15 +13,46 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useStandings, useRosters, useOwners, useLeagues } from '@/hooks/use-league-data'
+import { useStandings, useRosters, useOwners, useLeagues, usePlayoffBracket } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
 import { OwnerAvatar } from '@/components/owner-avatar'
 import { cn } from '@/lib/utils'
 import type { StandingsRow } from '@sleeper-explorer/shared'
+import {
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from 'recharts'
 
 const columnHelper = createColumnHelper<StandingsRow>()
+
+const RADAR_COLORS = ['#60a5fa', '#f87171', '#34d399', '#fbbf24', '#a78bfa', '#f472b6'] as const
+
+const RADAR_METRICS = [
+  { key: 'winPct', label: 'Win %' },
+  { key: 'ppg', label: 'PPG' },
+  { key: 'pag', label: 'PA/G' },
+  { key: 'rosterSize', label: 'Roster Size' },
+  { key: 'benchDepth', label: 'Bench Depth' },
+  { key: 'starterCount', label: 'Starters' },
+] as const
+
+interface TeamRadarData {
+  rosterId: number
+  name: string
+  winPct: number
+  ppg: number
+  pag: number
+  rosterSize: number
+  benchDepth: number
+  starterCount: number
+}
 
 const TABS = [
   { id: 'standings', label: 'Standings' },
@@ -38,9 +69,11 @@ export function LeagueOverviewPage() {
   const { data: rosters = [] } = useRosters(leagueId)
   const { data: owners = [] } = useOwners(leagueId)
   const { data: leagues = [] } = useLeagues()
+  const { data: playoffBracket = [] } = usePlayoffBracket(leagueId)
   const { getName } = useDisplayName()
   const [sorting, setSorting] = useState<SortingState>([{ id: 'total_points_for', desc: true }])
   const [activeTab, setActiveTab] = useState<TabId>('standings')
+  const [customSelectedTeamIds, setCustomSelectedTeamIds] = useState<Set<number> | null>(null)
 
   const rankMap = useMemo(() => {
     const sorted = [...standings].sort((a, b) => {
@@ -100,6 +133,82 @@ export function LeagueOverviewPage() {
     return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [league])
 
+  const placementMap = useMemo(() => {
+    const map = new Map<number, number>()
+    for (const matchup of playoffBracket) {
+      if (matchup.placement != null) {
+        if (matchup.winner_roster_id != null) {
+          map.set(matchup.winner_roster_id, matchup.placement)
+        }
+        if (matchup.loser_roster_id != null) {
+          map.set(matchup.loser_roster_id, matchup.placement + 1)
+        }
+      }
+    }
+    return map
+  }, [playoffBracket])
+
+  const radarTeamData = useMemo<TeamRadarData[]>(() => {
+    if (standings.length === 0) return []
+    return standings.map((s) => {
+      const gamesPlayed = Math.max(1, s.wins + s.losses + s.ties)
+      const roster = rostersWithOwner.find((r) => r.roster_id === s.roster_id)
+      return {
+        rosterId: s.roster_id,
+        name: getName({ display_name: s.display_name ?? `Team ${s.roster_id}`, team_name: s.team_name }),
+        winPct: ((s.wins + s.ties * 0.5) / gamesPlayed) * 100,
+        ppg: s.total_points_for / gamesPlayed,
+        pag: s.total_points_against / gamesPlayed,
+        rosterSize: roster?.totalCount ?? 0,
+        benchDepth: roster?.benchCount ?? 0,
+        starterCount: roster?.starterCount ?? 0,
+      }
+    })
+  }, [standings, rostersWithOwner, getName])
+
+  const defaultSelectedIds = useMemo(() => {
+    if (radarTeamData.length === 0) return new Set<number>()
+    return new Set(
+      [...radarTeamData]
+        .sort((a, b) => b.winPct - a.winPct)
+        .slice(0, 3)
+        .map((t) => t.rosterId),
+    )
+  }, [radarTeamData])
+
+  const activeTeamIds = customSelectedTeamIds ?? defaultSelectedIds
+
+  const radarChartData = useMemo(() => {
+    if (radarTeamData.length === 0) return []
+    const ranges = RADAR_METRICS.map((m) => {
+      const values = radarTeamData.map((t) => t[m.key])
+      const min = Math.min(...values)
+      const max = Math.max(...values)
+      return { min, range: max - min || 1 }
+    })
+    return RADAR_METRICS.map((m, i) => {
+      const entry: Record<string, number | string> = { metric: m.label }
+      for (const team of radarTeamData) {
+        if (activeTeamIds.has(team.rosterId)) {
+          entry[`roster_${team.rosterId}`] = Math.round(
+            ((team[m.key] - ranges[i].min) / ranges[i].range) * 100,
+          )
+        }
+      }
+      return entry
+    })
+  }, [radarTeamData, activeTeamIds])
+
+  const toggleTeam = (rosterId: number) => {
+    const next = new Set(activeTeamIds)
+    if (next.has(rosterId)) {
+      next.delete(rosterId)
+    } else {
+      next.add(rosterId)
+    }
+    setCustomSelectedTeamIds(next)
+  }
+
   const columns = useMemo(() => [
     columnHelper.display({
       id: 'rank',
@@ -117,22 +226,28 @@ export function LeagueOverviewPage() {
           Team <ArrowUpDown className="h-3 w-3" />
         </button>
       ),
-      cell: (info) => (
-        <div className="flex items-center gap-2">
-          <OwnerAvatar
-            avatarId={info.row.original.owner_avatar}
-            name={getName({ display_name: info.row.original.display_name ?? 'Unknown', team_name: info.row.original.team_name })}
-            size="sm"
-          />
-          <Link
-            to="/matchups"
-            search={(prev) => prev}
-            className="font-medium text-gray-100 hover:text-accent hover:underline"
-          >
-            {getName({ display_name: info.row.original.display_name ?? `Team ${info.row.original.roster_id}`, team_name: info.row.original.team_name })}
-          </Link>
-        </div>
-      ),
+      cell: (info) => {
+        const placement = placementMap.get(info.row.original.roster_id)
+        return (
+          <div className="flex items-center gap-2">
+            <OwnerAvatar
+              avatarId={info.row.original.owner_avatar}
+              name={getName({ display_name: info.row.original.display_name ?? 'Unknown', team_name: info.row.original.team_name })}
+              size="sm"
+            />
+            {league?.status === 'complete' && placement != null && (
+              <PlacementIcon placement={placement} totalTeams={standings.length} />
+            )}
+            <Link
+              to="/matchups"
+              search={(prev) => prev}
+              className="font-medium text-gray-100 hover:text-accent hover:underline"
+            >
+              {getName({ display_name: info.row.original.display_name ?? `Team ${info.row.original.roster_id}`, team_name: info.row.original.team_name })}
+            </Link>
+          </div>
+        )
+      },
     }),
     columnHelper.display({
       id: 'record',
@@ -184,7 +299,7 @@ export function LeagueOverviewPage() {
         <span className="font-mono text-gray-400">{info.getValue().toFixed(2)}</span>
       ),
     }),
-  ], [rankMap, getName])
+  ], [rankMap, getName, placementMap, league, standings])
 
   const table = useReactTable({
     data: standings,
@@ -333,12 +448,19 @@ export function LeagueOverviewPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {sortedByPoints.map((team, idx) => (
+              {sortedByPoints.map((team, idx) => {
+                const placement = placementMap.get(team.roster_id)
+                return (
                 <div key={team.roster_id} className="flex items-center gap-3 rounded-lg border border-gray-700/50 p-3">
                   <span className="w-8 text-center font-mono text-lg font-bold text-gray-400">{idx + 1}</span>
                   <OwnerAvatar avatarId={team.owner_avatar} name={getName({ display_name: team.display_name ?? 'Unknown', team_name: team.team_name })} size="md" />
                   <div className="flex-1">
-                    <div className="font-medium text-gray-100">{getName({ display_name: team.display_name ?? 'Unknown', team_name: team.team_name })}</div>
+                    <div className="flex items-center gap-1 font-medium text-gray-100">
+                      {league?.status === 'complete' && placement != null && (
+                        <PlacementIcon placement={placement} totalTeams={standings.length} />
+                      )}
+                      {getName({ display_name: team.display_name ?? 'Unknown', team_name: team.team_name })}
+                    </div>
                     <div className="text-xs text-gray-400">{team.wins}W-{team.losses}L</div>
                   </div>
                   <div className="text-right">
@@ -346,7 +468,8 @@ export function LeagueOverviewPage() {
                     <div className="text-xs text-gray-400">Avg {(team.total_points_for / Math.max(1, team.wins + team.losses + team.ties)).toFixed(1)}/wk</div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>
@@ -358,32 +481,56 @@ export function LeagueOverviewPage() {
             <CardTitle>Roster Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Starters</TableHead>
-                  <TableHead>Bench</TableHead>
-                  <TableHead>IR</TableHead>
-                  <TableHead>Taxi</TableHead>
-                  <TableHead>Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rostersWithOwner.map((r) => (
-                  <TableRow key={r.roster_id}>
-                    <TableCell className="font-medium text-gray-100">{r.ownerName}</TableCell>
-                    <TableCell>{r.starterCount}</TableCell>
-                    <TableCell>{r.benchCount}</TableCell>
-                    <TableCell>{r.irCount}</TableCell>
-                    <TableCell>{r.taxiCount}</TableCell>
-                    <TableCell>{r.totalCount}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="mb-4 flex flex-wrap gap-2">
+              {radarTeamData.map((team) => (
+                <button
+                  key={team.rosterId}
+                  onClick={() => toggleTeam(team.rosterId)}
+                  className={cn(
+                    'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                    activeTeamIds.has(team.rosterId)
+                      ? 'bg-accent/20 text-accent ring-1 ring-accent/50'
+                      : 'bg-bg-secondary text-gray-400 hover:text-gray-100',
+                  )}
+                >
+                  {team.name}
+                </button>
+              ))}
             </div>
+            {activeTeamIds.size > 0 ? (
+              <ResponsiveContainer width="100%" height={400}>
+                <RadarChart data={radarChartData}>
+                  <PolarGrid stroke="var(--color-chart-grid)" />
+                  <PolarAngleAxis
+                    dataKey="metric"
+                    tick={{ fill: 'var(--color-chart-axis)', fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'var(--color-chart-tooltip-bg)',
+                      border: '1px solid var(--color-chart-tooltip-border)',
+                      borderRadius: '0.5rem',
+                      color: 'var(--color-chart-tooltip-text)',
+                    }}
+                  />
+                  <Legend />
+                  {radarTeamData
+                    .filter((t) => activeTeamIds.has(t.rosterId))
+                    .map((team, idx) => (
+                      <Radar
+                        key={team.rosterId}
+                        name={team.name}
+                        dataKey={`roster_${team.rosterId}`}
+                        stroke={RADAR_COLORS[idx % RADAR_COLORS.length]}
+                        fill={RADAR_COLORS[idx % RADAR_COLORS.length]}
+                        fillOpacity={0.15}
+                      />
+                    ))}
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="py-8 text-center text-gray-400">Select teams to compare</p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -449,4 +596,17 @@ function InfoRow({ label, value }: InfoRowProps) {
       <span className="font-medium text-gray-100">{value}</span>
     </div>
   )
+}
+
+interface PlacementIconProps {
+  placement: number
+  totalTeams: number
+}
+
+function PlacementIcon({ placement, totalTeams }: PlacementIconProps) {
+  if (placement === 1) return <span title="Champion">🏆</span>
+  if (placement === 2) return <span title="Runner-up">🥈</span>
+  if (placement === 3) return <span title="3rd Place">🥉</span>
+  if (placement === totalTeams) return <span title="Last Place">🚽</span>
+  return null
 }

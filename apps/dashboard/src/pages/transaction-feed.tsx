@@ -9,6 +9,15 @@ import { useLeagueContext } from '@/hooks/use-league-context'
 import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
 import { formatRelativeTime } from '@/lib/utils'
+import type { TransactionRow } from '@sleeper-explorer/shared'
+
+interface TradeDraftPick {
+  season: string
+  round: number
+  roster_id: number
+  previous_owner_id: number
+  owner_id: number
+}
 
 const TYPE_LABELS: Record<string, string> = {
   trade: 'Trade',
@@ -22,6 +31,120 @@ const TYPE_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'o
   waiver: 'secondary',
   free_agent: 'win',
   commissioner: 'outline',
+}
+
+function resolvePlayerName(playerMap: Map<string, string> | undefined, playerId: string): string {
+  return playerMap?.get(playerId) ?? `Player #${playerId}`
+}
+
+interface TradeCardProps {
+  tx: TransactionRow
+  playerMap: Map<string, string> | undefined
+  rosterToOwnerName: Map<number, string>
+}
+
+function TradeCard({ tx, playerMap, rosterToOwnerName }: TradeCardProps) {
+  const addsByRoster = useMemo(() => {
+    const map = new Map<number, string[]>()
+    if (tx.adds) {
+      for (const [playerId, rosterId] of Object.entries(tx.adds)) {
+        const list = map.get(rosterId) ?? []
+        list.push(playerId)
+        map.set(rosterId, list)
+      }
+    }
+    return map
+  }, [tx.adds])
+
+  const draftPicksByReceiver = useMemo(() => {
+    const map = new Map<number, TradeDraftPick[]>()
+    const picks = (tx.draft_picks ?? []) as TradeDraftPick[]
+    for (const pick of picks) {
+      const list = map.get(pick.owner_id) ?? []
+      list.push(pick)
+      map.set(pick.owner_id, list)
+    }
+    return map
+  }, [tx.draft_picks])
+
+  const involvedRosterIds = useMemo(() => {
+    const ids = new Set<number>([...addsByRoster.keys(), ...draftPicksByReceiver.keys()])
+    return [...ids]
+  }, [addsByRoster, draftPicksByReceiver])
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <ArrowRightLeft className="h-4 w-4 text-accent" />
+            <Badge variant="default">Trade</Badge>
+            <span className="text-xs text-gray-500">
+              {tx.created ? formatRelativeTime(tx.created) : 'Unknown date'}
+            </span>
+          </div>
+          <Badge variant="outline">{tx.status}</Badge>
+        </div>
+
+        <div
+          className="grid gap-4"
+          style={{ gridTemplateColumns: `repeat(${involvedRosterIds.length}, 1fr)` }}
+        >
+          {involvedRosterIds.map((rosterId) => {
+            const playerAdds = addsByRoster.get(rosterId) ?? []
+            const pickAdds = draftPicksByReceiver.get(rosterId) ?? []
+            return (
+              <div key={rosterId} className="space-y-2">
+                <p className="font-semibold text-gray-100 text-sm border-b border-gray-700/50 pb-1">
+                  {rosterToOwnerName.get(rosterId) ?? `Roster ${rosterId}`}
+                </p>
+                {(playerAdds.length > 0 || pickAdds.length > 0) && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+                      Receives
+                    </p>
+                    {playerAdds.map((playerId) => (
+                      <div key={playerId} className="flex items-center gap-1.5 text-sm">
+                        <Plus className="h-3 w-3 text-win" />
+                        <span className="text-gray-200">
+                          {resolvePlayerName(playerMap, playerId)}
+                        </span>
+                      </div>
+                    ))}
+                    {pickAdds.map((pick) => {
+                      const fromName =
+                        rosterToOwnerName.get(pick.previous_owner_id) ??
+                        `Roster ${pick.previous_owner_id}`
+                      return (
+                        <div
+                          key={`${pick.season}-${pick.round}-${pick.previous_owner_id}`}
+                          className="flex items-center gap-1.5 text-sm"
+                        >
+                          <Plus className="h-3 w-3 text-win" />
+                          <span className="text-gray-200">
+                            {pick.season} Round {pick.round} Pick
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            (from {fromName})
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {involvedRosterIds.length === 2 && (
+          <p className="text-center text-xs text-muted-foreground mt-3">
+            ←── traded ──→
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 export function TransactionFeedPage() {
@@ -103,63 +226,72 @@ export function TransactionFeedPage() {
             </CardContent>
           </Card>
         ) : (
-          filtered.map((tx) => (
-            <Card key={tx.transaction_id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <ArrowRightLeft className="h-5 w-5 text-accent" />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={TYPE_VARIANTS[tx.type] ?? 'outline'}>
-                          {TYPE_LABELS[tx.type] ?? tx.type}
-                        </Badge>
-                        <span className="text-xs text-gray-500">
-                          {tx.created ? formatRelativeTime(tx.created) : 'Unknown date'}
-                        </span>
-                        {tx.creator && rosterToOwnerName.size > 0 && (() => {
-                          const creatorRoster = rosters.find((r) => r.owner_id === tx.creator)
-                          const creatorName = creatorRoster
-                            ? rosterToOwnerName.get(creatorRoster.roster_id)
-                            : null
-                          return creatorName ? (
-                            <span className="text-xs text-muted-foreground">by {creatorName}</span>
-                          ) : null
-                        })()}
-                      </div>
-                      <div className="mt-2 space-y-1">
-                        {tx.adds && Object.entries(tx.adds).map(([playerId, rosterId]) => (
-                          <div key={`add-${playerId}`} className="flex items-center gap-2 text-sm">
-                            <Plus className="h-3 w-3 text-win" />
-                            <span className="text-win">Added</span>
-                            <span className="text-gray-300">{playerMap?.get(playerId) ?? playerId}</span>
-                            {rosterToOwnerName.has(rosterId) && (
-                              <span className="text-xs text-muted-foreground">
-                                → {rosterToOwnerName.get(rosterId)}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                        {tx.drops && Object.entries(tx.drops).map(([playerId, rosterId]) => (
-                          <div key={`drop-${playerId}`} className="flex items-center gap-2 text-sm">
-                            <Minus className="h-3 w-3 text-loss" />
-                            <span className="text-loss">Dropped</span>
-                            <span className="text-gray-300">{playerMap?.get(playerId) ?? playerId}</span>
-                            {rosterToOwnerName.has(rosterId) && (
-                              <span className="text-xs text-muted-foreground">
-                                from {rosterToOwnerName.get(rosterId)}
-                              </span>
-                            )}
-                          </div>
-                        ))}
+          filtered.map((tx) =>
+            tx.type === 'trade' ? (
+              <TradeCard
+                key={tx.transaction_id}
+                tx={tx}
+                playerMap={playerMap}
+                rosterToOwnerName={rosterToOwnerName}
+              />
+            ) : (
+              <Card key={tx.transaction_id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <ArrowRightLeft className="h-5 w-5 text-accent" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={TYPE_VARIANTS[tx.type] ?? 'outline'}>
+                            {TYPE_LABELS[tx.type] ?? tx.type}
+                          </Badge>
+                          <span className="text-xs text-gray-500">
+                            {tx.created ? formatRelativeTime(tx.created) : 'Unknown date'}
+                          </span>
+                          {tx.creator && rosterToOwnerName.size > 0 && (() => {
+                            const creatorRoster = rosters.find((r) => r.owner_id === tx.creator)
+                            const creatorName = creatorRoster
+                              ? rosterToOwnerName.get(creatorRoster.roster_id)
+                              : null
+                            return creatorName ? (
+                              <span className="text-xs text-muted-foreground">by {creatorName}</span>
+                            ) : null
+                          })()}
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          {tx.adds && Object.entries(tx.adds).map(([playerId, rosterId]) => (
+                            <div key={`add-${playerId}`} className="flex items-center gap-2 text-sm">
+                              <Plus className="h-3 w-3 text-win" />
+                              <span className="text-win">Added</span>
+                              <span className="text-gray-300">{resolvePlayerName(playerMap, playerId)}</span>
+                              {rosterToOwnerName.has(rosterId) && (
+                                <span className="text-xs text-muted-foreground">
+                                  → {rosterToOwnerName.get(rosterId)}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                          {tx.drops && Object.entries(tx.drops).map(([playerId, rosterId]) => (
+                            <div key={`drop-${playerId}`} className="flex items-center gap-2 text-sm">
+                              <Minus className="h-3 w-3 text-loss" />
+                              <span className="text-loss">Dropped</span>
+                              <span className="text-gray-300">{resolvePlayerName(playerMap, playerId)}</span>
+                              {rosterToOwnerName.has(rosterId) && (
+                                <span className="text-xs text-muted-foreground">
+                                  from {rosterToOwnerName.get(rosterId)}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
+                    <Badge variant="outline">{tx.status}</Badge>
                   </div>
-                  <Badge variant="outline">{tx.status}</Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            )
+          )
         )}
       </div>
     </div>
