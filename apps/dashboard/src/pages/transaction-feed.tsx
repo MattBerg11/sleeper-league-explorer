@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ArrowRightLeft, Plus, Minus } from 'lucide-react'
+import { ArrowRightLeft, Plus, Minus, FileX } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
@@ -58,7 +58,7 @@ export function TransactionFeedPage() {
     return (
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Transactions</h2>
-        <div className="space-y-3">
+        <div role="status" aria-label="Loading transactions" className="space-y-3">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-24" />
           ))}
@@ -90,8 +90,12 @@ export function TransactionFeedPage() {
       <div className="space-y-3">
         {filtered.length === 0 ? (
           <Card>
-            <CardContent className="p-8 text-center text-gray-400">
-              No transactions found
+            <CardContent className="p-8 text-center">
+              <div className="flex flex-col items-center gap-2 text-gray-400">
+                <FileX className="h-8 w-8" />
+                <p>No transactions found</p>
+                <p className="text-xs">{typeFilter ? 'Try selecting a different type filter' : 'Transaction data will appear once activity occurs'}</p>
+              </div>
             </CardContent>
           </Card>
         ) : (

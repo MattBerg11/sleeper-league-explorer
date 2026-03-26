@@ -7,6 +7,7 @@ import { useDrafts, useDraftPicks, useOwners, usePlayerMap, usePlayerSeasonPoint
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { ErrorAlert } from '@/components/error-alert'
 import { cn } from '@/lib/utils'
+import { FileX } from 'lucide-react'
 
 const POSITION_COLORS: Record<string, string> = {
   QB: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -97,7 +98,9 @@ export function DraftRecapPage() {
     return (
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Draft Recap</h2>
-        <Skeleton className="h-[600px]" />
+        <div role="status" aria-label="Loading draft data">
+          <Skeleton className="h-[600px]" />
+        </div>
       </div>
     )
   }
@@ -116,8 +119,12 @@ export function DraftRecapPage() {
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Draft Recap</h2>
         <Card>
-          <CardContent className="p-8 text-center text-gray-400">
-            No draft data available
+          <CardContent className="p-8 text-center">
+            <div className="flex flex-col items-center gap-2 text-gray-400">
+              <FileX className="h-8 w-8" />
+              <p>No draft data available</p>
+              <p className="text-xs">Draft picks will appear once a draft has been completed</p>
+            </div>
           </CardContent>
         </Card>
       </div>

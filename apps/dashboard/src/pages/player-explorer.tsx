@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -84,7 +84,7 @@ export function PlayerExplorerPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-3">
+            <div role="status" aria-label="Loading players" className="space-y-3">
               {Array.from({ length: 10 }).map((_, i) => (
                 <Skeleton key={i} className="h-12" />
               ))}
@@ -107,8 +107,12 @@ export function PlayerExplorerPage() {
                 <TableBody>
                   {players.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-gray-400">
-                        No players found
+                      <TableCell colSpan={5} className="py-8 text-center">
+                        <div className="flex flex-col items-center gap-2 text-gray-400">
+                          <Users className="h-8 w-8" />
+                          <p>No players found</p>
+                          <p className="text-xs">Try adjusting your search or filters</p>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : (

@@ -195,7 +195,7 @@ export function LeagueOverviewPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div role="status" aria-label="Loading league overview" className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-28" />
@@ -254,11 +254,13 @@ export function LeagueOverviewPage() {
         </Card>
       </div>
 
-      <div className="flex gap-1 rounded-lg bg-bg-secondary p-1">
+      <div role="tablist" aria-label="League overview sections" className="flex gap-1 rounded-lg bg-bg-secondary p-1">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            role="tab"
+            aria-selected={activeTab === tab.id}
             className={cn(
               'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
               activeTab === tab.id

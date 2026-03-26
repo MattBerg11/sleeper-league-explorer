@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Trophy } from 'lucide-react'
+import { Trophy, CalendarX } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -47,7 +47,7 @@ export function PlayoffPicturePage() {
     return (
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Playoff Picture</h2>
-        <div className="flex gap-8">
+        <div role="status" aria-label="Loading playoff bracket" className="flex gap-8">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-96 w-64" />
           ))}
@@ -65,8 +65,12 @@ export function PlayoffPicturePage() {
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Playoff Picture</h2>
         <Card>
-          <CardContent className="p-8 text-center text-gray-400">
-            No playoff bracket data available
+          <CardContent className="p-8 text-center">
+            <div className="flex flex-col items-center gap-2 text-gray-400">
+              <CalendarX className="h-8 w-8" />
+              <p>No playoff bracket data available</p>
+              <p className="text-xs">Bracket data will appear once the playoffs begin</p>
+            </div>
           </CardContent>
         </Card>
       </div>

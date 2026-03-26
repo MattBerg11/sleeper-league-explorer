@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
@@ -123,7 +123,7 @@ export function MatchupHistoryPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div role="status" aria-label="Loading matchups" className="grid gap-4 md:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
@@ -165,8 +165,12 @@ export function MatchupHistoryPage() {
           })}
           {matchups.length === 0 && (
             <Card className="col-span-full">
-              <CardContent className="p-8 text-center text-gray-400">
-                No matchups found for Week {week}
+              <CardContent className="p-8 text-center">
+                <div className="flex flex-col items-center gap-2 text-gray-400">
+                  <CalendarX className="h-8 w-8" />
+                  <p>No matchups found for Week {week}</p>
+                  <p className="text-xs">Try selecting a different week</p>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -182,6 +186,8 @@ export function MatchupHistoryPage() {
                 <button
                   key={team.id}
                   onClick={() => toggleTeam(team.id)}
+                  aria-pressed={enabledTeams.has(team.id)}
+                  aria-label={`Toggle ${team.name} scoring line`}
                   className={cn(
                     'rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors border',
                     enabledTeams.has(team.id)
@@ -200,6 +206,7 @@ export function MatchupHistoryPage() {
             </div>
           </CardHeader>
           <CardContent>
+            <div role="img" aria-label="Weekly scoring trend chart showing average score and per-team lines by week">
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
@@ -226,6 +233,7 @@ export function MatchupHistoryPage() {
                 )}
               </LineChart>
             </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       )}
