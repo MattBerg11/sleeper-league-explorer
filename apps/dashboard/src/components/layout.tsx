@@ -16,14 +16,24 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { to: '/', label: 'League Overview', icon: LayoutDashboard },
-  { to: '/players', label: 'Player Explorer', icon: Users },
-  { to: '/matchups', label: 'Matchups', icon: Swords },
-  { to: '/draft', label: 'Draft Recap', icon: FileText },
-  { to: '/transactions', label: 'Transactions', icon: ArrowRightLeft },
-  { to: '/playoffs', label: 'Playoffs', icon: Trophy },
-] as const
+const navGroups = [
+  {
+    label: 'League',
+    items: [
+      { to: '/' as const, label: 'Overview', icon: LayoutDashboard },
+      { to: '/matchups' as const, label: 'Matchups', icon: Swords },
+      { to: '/playoffs' as const, label: 'Playoffs', icon: Trophy },
+    ],
+  },
+  {
+    label: 'Analysis',
+    items: [
+      { to: '/players' as const, label: 'Players', icon: Users },
+      { to: '/draft' as const, label: 'Draft', icon: FileText },
+      { to: '/transactions' as const, label: 'Transactions', icon: ArrowRightLeft },
+    ],
+  },
+]
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -63,33 +73,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
 
-        <nav className="flex-1 space-y-1 p-4">
-          {navItems.map((item) => {
-            const isActive = matchRoute({ to: item.to, fuzzy: item.to !== '/' })
-              || (item.to === '/' && matchRoute({ to: '/' }))
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                search={(prev: Record<string, unknown>) => prev}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-accent/20 text-accent'
-                    : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-100',
-                )}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-
-        <div className="border-t border-gray-700/50 p-4">
-          <label className="mb-1 block text-xs font-medium text-gray-400">League</label>
+        <div className="border-b border-gray-700/50 px-4 py-3">
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">League</label>
           <Select
             value={leagueName}
             onChange={(e) => setLeagueName(e.target.value)}
@@ -105,6 +90,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </Select>
         </div>
+
+        <nav className="flex-1 space-y-4 p-4">
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <span className="mb-1 block px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                {group.label}
+              </span>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = matchRoute({ to: item.to, fuzzy: item.to !== '/' })
+                    || (item.to === '/' && matchRoute({ to: '/' }))
+                  const Icon = item.icon
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      search={(prev: Record<string, unknown>) => prev}
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-accent/20 text-accent'
+                          : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-100',
+                      )}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
       </aside>
 
       {/* Main Content */}
