@@ -295,6 +295,24 @@ export function usePlayerSeasonPoints(leagueId: string) {
   })
 }
 
+export function useLastSynced() {
+  return useQuery<string | null>({
+    queryKey: ['last-synced'],
+    queryFn: async () => {
+      if (!supabase) return null
+      const { data, error } = await supabase
+        .from('leagues')
+        .select('synced_at')
+        .order('synced_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (error) return null
+      return (data as { synced_at: string })?.synced_at ?? null
+    },
+    staleTime: STALE_TIME,
+  })
+}
+
 export function useNFLState() {
   return useQuery<NFLStateRow | null>({
     queryKey: ['nfl-state'],

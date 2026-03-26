@@ -14,7 +14,8 @@ import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useLeagueContext } from '@/hooks/use-league-context'
-import { cn } from '@/lib/utils'
+import { useLastSynced } from '@/hooks/use-league-data'
+import { cn, formatRelativeTime } from '@/lib/utils'
 
 const navGroups = [
   {
@@ -39,6 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { leagueName, setLeagueName, season, setSeason, leagueFamilies, availableSeasons } = useLeagueContext()
   const matchRoute = useMatchRoute()
+  const { data: lastSynced } = useLastSynced()
 
   return (
     <div className="flex min-h-screen bg-bg-primary">
@@ -156,6 +158,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <option value="">Loading…</option>
                 )}
               </Select>
+              {lastSynced && (
+                <span
+                  className="hidden text-xs text-gray-500 sm:inline"
+                  title={new Date(lastSynced).toLocaleString()}
+                >
+                  Synced {formatRelativeTime(new Date(lastSynced).getTime())}
+                </span>
+              )}
               <ThemeToggle />
             </div>
           </div>
