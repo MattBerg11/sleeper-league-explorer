@@ -4,7 +4,13 @@ import type { SupabaseClient } from '@sleeper-explorer/shared'
 import { runSync } from './sync'
 import type { SyncMode } from './sync'
 
-const VALID_SYNC_MODES: readonly string[] = ['full', 'players-only', 'leagues-only'] as const
+const VALID_SYNC_MODES: readonly string[] = [
+  'full',
+  'players-only',
+  'leagues-only',
+  'daily',
+  'initiate',
+] as const
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name]

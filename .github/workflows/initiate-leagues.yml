@@ -1,20 +1,23 @@
-name: Daily Sync
+name: Initiate Leagues
 
 on:
-  schedule:
-    - cron: '0 6 * * *'
   workflow_dispatch:
+    inputs:
+      league_ids:
+        description: 'Comma-separated league IDs to initiate (defaults to vars.LEAGUE_IDS)'
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: sync-daily
+  group: initiate-leagues
   cancel-in-progress: false
 
 jobs:
   sync:
-    name: Sync NFL State & Players
+    name: Initiate New Leagues
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,10 +36,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run daily sync
+      - name: Run initiate sync
         run: pnpm --filter @sleeper-explorer/etl sync
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          LEAGUE_IDS: ${{ vars.LEAGUE_IDS }}
-          SYNC_MODE: daily
+          LEAGUE_IDS: ${{ inputs.league_ids || vars.LEAGUE_IDS }}
+          SYNC_MODE: initiate
