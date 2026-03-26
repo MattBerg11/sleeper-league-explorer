@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
@@ -49,15 +51,35 @@ export function MatchupHistoryPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Matchup History</h2>
-        <Select
-          value={String(week)}
-          onChange={(e) => setWeek(Number(e.target.value))}
-          className="w-32"
-        >
-          {Array.from({ length: MAX_REGULAR_SEASON_WEEKS }, (_, i) => i + 1).map((w) => (
-            <option key={w} value={w}>Week {w}</option>
-          ))}
-        </Select>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setWeek((w) => Math.max(1, w - 1))}
+            disabled={week <= 1}
+            aria-label="Previous week"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Select
+            value={String(week)}
+            onChange={(e) => setWeek(Number(e.target.value))}
+            className="w-32"
+          >
+            {Array.from({ length: MAX_REGULAR_SEASON_WEEKS }, (_, i) => i + 1).map((w) => (
+              <option key={w} value={w}>Week {w}</option>
+            ))}
+          </Select>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setWeek((w) => Math.min(MAX_REGULAR_SEASON_WEEKS, w + 1))}
+            disabled={week >= MAX_REGULAR_SEASON_WEEKS}
+            aria-label="Next week"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
