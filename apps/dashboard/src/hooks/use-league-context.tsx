@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useMemo, useCallback } from 'react'
+import { createContext, useContext, useMemo, useCallback } from 'react'
 import type { ReactNode } from 'react'
+import { useSearch, useNavigate } from '@tanstack/react-router'
 import { useLeagues } from '@/hooks/use-league-data'
 import type { LeagueRow } from '@sleeper-explorer/shared'
 
@@ -28,8 +29,11 @@ interface LeagueProviderProps {
 
 export function LeagueProvider({ children }: LeagueProviderProps) {
   const { data: leagues = [], isLoading } = useLeagues()
-  const [leagueName, setLeagueNameState] = useState('ALF')
-  const [season, setSeason] = useState('')
+  const search = useSearch({ from: '__root__' })
+  const navigate = useNavigate()
+
+  const leagueName = search.league ?? 'ALF'
+  const seasonParam = search.season ?? ''
 
   const leagueFamilies = useMemo<LeagueFamily[]>(() => {
     const familyMap = new Map<string, { season: string; leagueId: string }[]>()
@@ -51,8 +55,8 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
     return family?.seasons.map((s) => s.season) ?? []
   }, [leagueFamilies, leagueName])
 
-  const effectiveSeason = availableSeasons.includes(season)
-    ? season
+  const effectiveSeason = availableSeasons.includes(seasonParam)
+    ? seasonParam
     : availableSeasons[0] ?? ''
 
   const leagueId = useMemo(() => {
@@ -62,9 +66,18 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
   }, [leagueFamilies, leagueName, effectiveSeason])
 
   const setLeagueName = useCallback((name: string) => {
-    setLeagueNameState(name)
-    setSeason('')
-  }, [])
+    void navigate({
+      from: '/' as const,
+      search: (prev) => ({ ...prev, league: name, season: undefined }),
+    })
+  }, [navigate])
+
+  const setSeason = useCallback((s: string) => {
+    void navigate({
+      from: '/' as const,
+      search: (prev) => ({ ...prev, season: s }),
+    })
+  }, [navigate])
 
   return (
     <LeagueContext value={{

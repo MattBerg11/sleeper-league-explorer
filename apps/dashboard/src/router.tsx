@@ -1,7 +1,9 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+import { z } from 'zod'
 import { Layout } from '@/components/layout'
 import { ErrorAlert } from '@/components/error-alert'
+import { LeagueProvider } from '@/hooks/use-league-context'
 import { LeagueOverviewPage } from '@/pages/league-overview'
 import { PlayerExplorerPage } from '@/pages/player-explorer'
 import { MatchupHistoryPage } from '@/pages/matchup-history'
@@ -9,6 +11,11 @@ import { DraftRecapPage } from '@/pages/draft-recap'
 import { TransactionFeedPage } from '@/pages/transaction-feed'
 import { PlayoffPicturePage } from '@/pages/playoff-picture'
 import { NotFoundPage } from '@/pages/not-found'
+
+const searchSchema = z.object({
+  league: z.string().optional().catch(undefined),
+  season: z.string().optional().catch(undefined),
+})
 
 function RouteErrorFallback({ error, reset }: ErrorComponentProps) {
   return (
@@ -24,11 +31,14 @@ function RouteErrorFallback({ error, reset }: ErrorComponentProps) {
 
 const rootRoute = createRootRoute({
   component: () => (
-    <Layout>
-      <Outlet />
-    </Layout>
+    <LeagueProvider>
+      <Layout>
+        <Outlet />
+      </Layout>
+    </LeagueProvider>
   ),
   notFoundComponent: NotFoundPage,
+  validateSearch: searchSchema,
 })
 
 const indexRoute = createRoute({
