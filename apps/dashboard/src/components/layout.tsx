@@ -11,10 +11,12 @@ import {
   TrendingUp,
   Menu,
   X,
+  Shield,
 } from 'lucide-react'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { useDisplayName } from '@/hooks/use-display-name'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { useLastSynced } from '@/hooks/use-league-data'
 import { cn, formatRelativeTime } from '@/lib/utils'
@@ -43,6 +45,7 @@ const navGroups = [
 export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { leagueName, setLeagueName, season, setSeason, leagueFamilies, availableSeasons } = useLeagueContext()
+  const { mode, setMode } = useDisplayName()
   const matchRoute = useMatchRoute()
   const { data: lastSynced } = useLastSynced()
 
@@ -95,6 +98,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <option value={leagueName}>Loading…</option>
             )}
           </Select>
+        </div>
+
+        <div className="border-b border-gray-700/50 px-4 py-2">
+          <button
+            type="button"
+            onClick={() => setMode(mode === 'team' ? 'user' : 'team')}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-400 transition-colors hover:bg-gray-800/50 hover:text-gray-200"
+            title={mode === 'team' ? 'Showing team names' : 'Showing user names'}
+          >
+            {mode === 'team' ? (
+              <Shield className="h-3.5 w-3.5" />
+            ) : (
+              <Users className="h-3.5 w-3.5" />
+            )}
+            <span>{mode === 'team' ? 'Team Names' : 'User Names'}</span>
+          </button>
         </div>
 
         <nav className="flex-1 space-y-4 p-4">

@@ -1,9 +1,12 @@
-﻿import { cn } from '@/lib/utils'
+﻿import { useState } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 interface OwnerAvatarProps {
   avatarId: string | null | undefined
   name: string
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  fullSize?: boolean
   className?: string
 }
 
@@ -11,25 +14,16 @@ const SIZES = {
   sm: 'h-6 w-6 text-[10px]',
   md: 'h-8 w-8 text-xs',
   lg: 'h-10 w-10 text-sm',
+  xl: 'h-14 w-14 text-base',
 }
 
-export function OwnerAvatar({ avatarId, name, size = 'md', className }: OwnerAvatarProps) {
+function Initials({ name, size, className }: { name: string; size: keyof typeof SIZES; className?: string }) {
   const initials = name
     .split(' ')
     .map((w) => w[0])
     .join('')
     .slice(0, 2)
     .toUpperCase()
-
-  if (avatarId) {
-    return (
-      <img
-        src={`https://sleepercdn.com/avatars/thumbs/${avatarId}`}
-        alt={name}
-        className={cn('rounded-full object-cover', SIZES[size], className)}
-      />
-    )
-  }
 
   return (
     <div
@@ -42,5 +36,37 @@ export function OwnerAvatar({ avatarId, name, size = 'md', className }: OwnerAva
     >
       {initials}
     </div>
+  )
+}
+
+export function OwnerAvatar({ avatarId, name, size = 'md', fullSize = false, className }: OwnerAvatarProps) {
+  const [loaded, setLoaded] = useState(false)
+  const [errored, setErrored] = useState(false)
+
+  if (!avatarId || errored) {
+    return <Initials name={name} size={size} className={className} />
+  }
+
+  const src = fullSize
+    ? `https://sleepercdn.com/avatars/${avatarId}`
+    : `https://sleepercdn.com/avatars/thumbs/${avatarId}`
+
+  return (
+    <span className={cn('relative inline-flex shrink-0', SIZES[size], className)}>
+      {!loaded && (
+        <Skeleton className={cn('absolute inset-0 rounded-full', SIZES[size])} />
+      )}
+      <img
+        src={src}
+        alt={name}
+        onLoad={() => setLoaded(true)}
+        onError={() => setErrored(true)}
+        className={cn(
+          'rounded-full object-cover transition-opacity',
+          SIZES[size],
+          loaded ? 'opacity-100' : 'opacity-0',
+        )}
+      />
+    </span>
   )
 }
