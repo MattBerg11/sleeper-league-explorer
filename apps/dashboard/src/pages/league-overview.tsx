@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-table'
 import type { SortingState } from '@tanstack/react-table'
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { ArrowUpDown, TrendingUp, Users, Trophy } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -55,7 +56,13 @@ export function LeagueOverviewPage() {
       ),
       cell: (info) => (
         <div>
-          <span className="font-medium text-gray-100">{info.row.original.team_name ?? info.row.original.display_name ?? `Team ${info.row.original.roster_id}`}</span>
+          <Link
+            to="/matchups"
+            search={(prev) => prev}
+            className="font-medium text-gray-100 hover:text-accent hover:underline"
+          >
+            {info.row.original.team_name ?? info.row.original.display_name ?? `Team ${info.row.original.roster_id}`}
+          </Link>
         </div>
       ),
     }),
