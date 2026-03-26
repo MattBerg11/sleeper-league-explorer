@@ -23,14 +23,25 @@ const columnHelper = createColumnHelper<StandingsRow>()
 export function LeagueOverviewPage() {
   const { leagueId } = useLeagueContext()
   const { data: standings = [], isLoading, error } = useStandings(leagueId)
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'total_points_for', desc: true }])
+
+  const rankMap = useMemo(() => {
+    const sorted = [...standings].sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins
+      if (b.ties !== a.ties) return b.ties - a.ties
+      return b.total_points_for - a.total_points_for
+    })
+    const map = new Map<number, number>()
+    sorted.forEach((row, i) => map.set(row.roster_id, i + 1))
+    return map
+  }, [standings])
 
   const columns = useMemo(() => [
     columnHelper.display({
       id: 'rank',
       header: 'Rank',
       cell: (info) => (
-        <span className="font-mono text-gray-400">{info.row.index + 1}</span>
+        <span className="font-mono text-gray-400">{rankMap.get(info.row.original.roster_id) ?? '-'}</span>
       ),
     }),
     columnHelper.accessor('display_name', {
@@ -62,6 +73,16 @@ export function LeagueOverviewPage() {
         )
       },
     }),
+    columnHelper.display({
+      id: 'win_pct',
+      header: 'Win %',
+      cell: (info) => {
+        const { wins, losses, ties } = info.row.original
+        const total = wins + losses + ties
+        const pct = total > 0 ? (wins + ties * 0.5) / total : 0
+        return <span className="font-mono">{(pct * 100).toFixed(1)}%</span>
+      },
+    }),
     columnHelper.accessor('total_points_for', {
       header: ({ column }) => (
         <button
@@ -88,7 +109,7 @@ export function LeagueOverviewPage() {
         <span className="font-mono text-gray-400">{info.getValue().toFixed(2)}</span>
       ),
     }),
-  ], [])
+  ], [rankMap])
 
   const table = useReactTable({
     data: standings,
@@ -170,7 +191,14 @@ export function LeagueOverviewPage() {
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
+                    <TableHead
+                      key={header.id}
+                      aria-sort={
+                        header.column.getIsSorted() === 'asc' ? 'ascending'
+                        : header.column.getIsSorted() === 'desc' ? 'descending'
+                        : undefined
+                      }
+                    >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   ))}
