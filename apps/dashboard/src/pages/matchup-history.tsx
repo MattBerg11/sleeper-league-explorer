@@ -119,15 +119,15 @@ export function MatchupHistoryPage() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="week" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+                <XAxis dataKey="week" stroke="var(--color-chart-axis)" />
+                <YAxis stroke="var(--color-chart-axis)" />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
-                  labelStyle={{ color: '#f3f4f6' }}
-                  itemStyle={{ color: '#818cf8' }}
+                  contentStyle={{ backgroundColor: 'var(--color-chart-tooltip-bg)', border: '1px solid var(--color-chart-tooltip-border)', borderRadius: '8px' }}
+                  labelStyle={{ color: 'var(--color-chart-tooltip-text)' }}
+                  itemStyle={{ color: 'var(--color-chart-line)' }}
                 />
-                <Line type="monotone" dataKey="avgScore" stroke="#818cf8" strokeWidth={2} dot={{ fill: '#818cf8' }} />
+                <Line type="monotone" dataKey="avgScore" stroke="var(--color-chart-line)" strokeWidth={2} dot={{ fill: 'var(--color-chart-line)' }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>

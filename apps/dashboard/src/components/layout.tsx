@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { cn } from '@/lib/utils'
 
@@ -123,18 +124,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <h2 className="text-lg font-semibold text-gray-100">
               {leagueName}{season ? ` — ${season}` : ''}
             </h2>
-            <Select
-              value={season}
-              onChange={(e) => setSeason(e.target.value)}
-              className="w-36"
-            >
-              {availableSeasons.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-              {availableSeasons.length === 0 && (
-                <option value="">Loading…</option>
-              )}
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select
+                value={season}
+                onChange={(e) => setSeason(e.target.value)}
+                className="w-36"
+              >
+                {availableSeasons.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+                {availableSeasons.length === 0 && (
+                  <option value="">Loading…</option>
+                )}
+              </Select>
+              <ThemeToggle />
+            </div>
           </div>
         </header>
 
