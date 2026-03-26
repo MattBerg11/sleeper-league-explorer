@@ -1,23 +1,48 @@
 import { useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { usePlayers } from '@/hooks/use-league-data'
 import { ErrorAlert } from '@/components/error-alert'
+import { usePlayers } from '@/hooks/use-league-data'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 const POSITIONS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF'] as const
+const PAGE_SIZE = 50
 
 export function PlayerExplorerPage() {
   const [search, setSearch] = useState('')
   const [position, setPosition] = useState<string>('')
-  const { data: players = [], isLoading, error } = usePlayers({
-    search: search || undefined,
+  const [page, setPage] = useState(1)
+
+  const debouncedSearch = useDebouncedValue(search, 300)
+
+  const { data, isLoading, error } = usePlayers({
+    search: debouncedSearch || undefined,
     position: position || undefined,
+    page,
+    pageSize: PAGE_SIZE,
   })
+
+  const players = data?.players ?? []
+  const totalCount = data?.totalCount ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const from = (page - 1) * PAGE_SIZE + 1
+  const to = Math.min(page * PAGE_SIZE, totalCount)
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
+    setPage(1)
+  }
+
+  const handlePositionChange = (value: string) => {
+    setPosition(value)
+    setPage(1)
+  }
 
   return (
     <div className="space-y-6">
@@ -29,13 +54,13 @@ export function PlayerExplorerPage() {
           <Input
             placeholder="Search players..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10"
           />
         </div>
         <Select
           value={position}
-          onChange={(e) => setPosition(e.target.value)}
+          onChange={(e) => handlePositionChange(e.target.value)}
           className="w-32"
         >
           {POSITIONS.map((pos) => (
@@ -48,7 +73,14 @@ export function PlayerExplorerPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Players</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Players</CardTitle>
+            {totalCount > 0 && (
+              <span className="text-sm text-gray-400">
+                Showing {from}–{to} of {totalCount.toLocaleString()}
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -60,42 +92,73 @@ export function PlayerExplorerPage() {
           ) : error ? (
             <ErrorAlert error={error} title="Error loading players" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Age</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {players.length === 0 ? (
+            <>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-gray-400">
-                      No players found
-                    </TableCell>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Position</TableHead>
+                    <TableHead>Team</TableHead>
+                    <TableHead>Age</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ) : (
-                  players.map((player) => (
-                    <TableRow key={player.player_id}>
-                      <TableCell className="font-medium">{player.full_name ?? `${player.first_name} ${player.last_name}`}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{player.position ?? 'N/A'}</Badge>
-                      </TableCell>
-                      <TableCell>{player.team ?? '-'}</TableCell>
-                      <TableCell>{player.age ?? '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant={player.status === 'Active' ? 'win' : 'outline'}>
-                          {player.status ?? 'Unknown'}
-                        </Badge>
+                </TableHeader>
+                <TableBody>
+                  {players.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-gray-400">
+                        No players found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    players.map((player) => (
+                      <TableRow key={player.player_id}>
+                        <TableCell className="font-medium">{player.full_name ?? `${player.first_name} ${player.last_name}`}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{player.position ?? 'N/A'}</Badge>
+                        </TableCell>
+                        <TableCell>{player.team ?? '-'}</TableCell>
+                        <TableCell>{player.age ?? '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={player.status === 'Active' ? 'win' : 'outline'}>
+                            {player.status ?? 'Unknown'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+
+              {/* Pagination Controls */}
+              {totalCount > PAGE_SIZE && (
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="text-sm text-gray-400">
+                    Page {page} of {totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                    >
+                      <ChevronLeft className="mr-1 h-4 w-4" />
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                    >
+                      Next
+                      <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

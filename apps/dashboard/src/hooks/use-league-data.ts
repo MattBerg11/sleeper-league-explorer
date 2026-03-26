@@ -104,20 +104,29 @@ export function useAllMatchupPairs(leagueId: string) {
 interface PlayerFilterOptions {
   search?: string
   position?: string
-  limit?: number
+  page?: number
+  pageSize?: number
+}
+
+interface PlayersResult {
+  players: PlayerRow[]
+  totalCount: number
 }
 
 export function usePlayers(options: PlayerFilterOptions = {}) {
-  const { search, position, limit = 100 } = options
-  return useQuery<PlayerRow[]>({
-    queryKey: ['players', search, position, limit],
+  const { search, position, page = 1, pageSize = 50 } = options
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  return useQuery<PlayersResult>({
+    queryKey: ['players', search, position, page, pageSize],
     queryFn: async () => {
-      if (!supabase) return []
+      if (!supabase) return { players: [], totalCount: 0 }
       let query = supabase
         .from('players')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('search_rank', { ascending: true, nullsFirst: false })
-        .limit(limit)
+        .range(from, to)
       if (search) {
         const escaped = search.replace(/%/g, '\\%').replace(/_/g, '\\_')
         query = query.ilike('full_name', `%${escaped}%`)
@@ -125,9 +134,12 @@ export function usePlayers(options: PlayerFilterOptions = {}) {
       if (position) {
         query = query.eq('position', position)
       }
-      const { data, error } = await query
+      const { data, error, count } = await query
       if (error) throw error
-      return (data ?? []) as PlayerRow[]
+      return {
+        players: (data ?? []) as PlayerRow[],
+        totalCount: count ?? 0,
+      }
     },
     staleTime: STALE_TIME,
   })
