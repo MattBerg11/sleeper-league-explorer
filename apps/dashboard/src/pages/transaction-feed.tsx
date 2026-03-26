@@ -4,9 +4,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useTransactions, usePlayerMap } from '@/hooks/use-league-data'
+import { useTransactions, usePlayerMap, useRosters, useOwners } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { ErrorAlert } from '@/components/error-alert'
+import { formatRelativeTime } from '@/lib/utils'
 
 const TYPE_LABELS: Record<string, string> = {
   trade: 'Trade',
@@ -26,7 +27,22 @@ export function TransactionFeedPage() {
   const { leagueId } = useLeagueContext()
   const { data: transactions = [], isLoading, error } = useTransactions(leagueId)
   const { data: playerMap } = usePlayerMap()
+  const { data: rosters = [] } = useRosters(leagueId)
+  const { data: owners = [] } = useOwners(leagueId)
   const [typeFilter, setTypeFilter] = useState('')
+
+  const rosterToOwnerName = useMemo(() => {
+    const ownerMap = new Map(owners.map((o) => [o.user_id, o.team_name ?? o.display_name]))
+    const map = new Map<number, string>()
+    for (const r of rosters) {
+      if (r.owner_id) {
+        map.set(r.roster_id, ownerMap.get(r.owner_id) ?? `Roster ${r.roster_id}`)
+      } else {
+        map.set(r.roster_id, `Roster ${r.roster_id}`)
+      }
+    }
+    return map
+  }, [rosters, owners])
 
   const filtered = useMemo(() => {
     if (!typeFilter) return transactions
@@ -91,22 +107,41 @@ export function TransactionFeedPage() {
                           {TYPE_LABELS[tx.type] ?? tx.type}
                         </Badge>
                         <span className="text-xs text-gray-500">
-                          {tx.created ? new Date(tx.created).toLocaleDateString() : 'Unknown date'}
+                          {tx.created ? formatRelativeTime(tx.created) : 'Unknown date'}
                         </span>
+                        {tx.creator && rosterToOwnerName.size > 0 && (() => {
+                          const creatorRoster = rosters.find((r) => r.owner_id === tx.creator)
+                          const creatorName = creatorRoster
+                            ? rosterToOwnerName.get(creatorRoster.roster_id)
+                            : null
+                          return creatorName ? (
+                            <span className="text-xs text-muted-foreground">by {creatorName}</span>
+                          ) : null
+                        })()}
                       </div>
                       <div className="mt-2 space-y-1">
-                        {tx.adds && Object.keys(tx.adds).map((playerId) => (
+                        {tx.adds && Object.entries(tx.adds).map(([playerId, rosterId]) => (
                           <div key={`add-${playerId}`} className="flex items-center gap-2 text-sm">
                             <Plus className="h-3 w-3 text-win" />
                             <span className="text-win">Added</span>
                             <span className="text-gray-300">{playerMap?.get(playerId) ?? playerId}</span>
+                            {rosterToOwnerName.has(rosterId) && (
+                              <span className="text-xs text-muted-foreground">
+                                → {rosterToOwnerName.get(rosterId)}
+                              </span>
+                            )}
                           </div>
                         ))}
-                        {tx.drops && Object.keys(tx.drops).map((playerId) => (
+                        {tx.drops && Object.entries(tx.drops).map(([playerId, rosterId]) => (
                           <div key={`drop-${playerId}`} className="flex items-center gap-2 text-sm">
                             <Minus className="h-3 w-3 text-loss" />
                             <span className="text-loss">Dropped</span>
                             <span className="text-gray-300">{playerMap?.get(playerId) ?? playerId}</span>
+                            {rosterToOwnerName.has(rosterId) && (
+                              <span className="text-xs text-muted-foreground">
+                                from {rosterToOwnerName.get(rosterId)}
+                              </span>
+                            )}
                           </div>
                         ))}
                       </div>
