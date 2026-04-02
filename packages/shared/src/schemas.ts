@@ -6,7 +6,7 @@ export const nflStateSchema = z.object({
   season_type: z.string(),
   week: z.number(),
   display_week: z.number(),
-  season_start_date: z.string().optional(),
+  season_start_date: z.string().nullish(),
   leg: z.number(),
   league_season: z.string().optional(),
   league_create_season: z.string().optional(),
