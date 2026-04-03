@@ -27,7 +27,6 @@ import {
   PolarAngleAxis,
   ResponsiveContainer,
   Tooltip,
-  Legend,
 } from 'recharts'
 
 const columnHelper = createColumnHelper<StandingsRow>()
@@ -179,6 +178,14 @@ export function LeagueOverviewPage() {
   }, [radarTeamData])
 
   const activeTeamIds = customSelectedTeamIds ?? defaultSelectedIds
+
+  const teamColorMap = useMemo(() => {
+    const map = new Map<number, string>()
+    radarTeamData.forEach((t, i) => {
+      map.set(t.rosterId, RADAR_COLORS[i % RADAR_COLORS.length])
+    })
+    return map
+  }, [radarTeamData])
 
   const radarChartData = useMemo(() => {
     if (radarTeamData.length === 0) return []
@@ -590,23 +597,32 @@ export function LeagueOverviewPage() {
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex flex-wrap gap-2">
-              {radarTeamData.map((team) => (
-                <button
-                  key={team.rosterId}
-                  onClick={() => toggleTeam(team.rosterId)}
-                  className={cn(
-                    'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                    activeTeamIds.has(team.rosterId)
-                      ? 'bg-accent/20 text-accent ring-1 ring-accent/50'
-                      : 'bg-bg-secondary text-gray-400 hover:text-gray-100',
-                  )}
-                >
-                  {team.name}
-                </button>
-              ))}
+              {radarTeamData.map((team) => {
+                const color = teamColorMap.get(team.rosterId) ?? RADAR_COLORS[0]
+                const isActive = activeTeamIds.has(team.rosterId)
+                return (
+                  <button
+                    key={team.rosterId}
+                    onClick={() => toggleTeam(team.rosterId)}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+                      isActive
+                        ? 'bg-bg-secondary ring-1'
+                        : 'bg-bg-secondary text-gray-500 hover:text-gray-300',
+                    )}
+                    style={isActive ? { color, ringColor: color, borderColor: color, '--tw-ring-color': color } as React.CSSProperties : undefined}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: isActive ? color : '#6b7280' }}
+                    />
+                    {team.name}
+                  </button>
+                )
+              })}
             </div>
             {activeTeamIds.size > 0 ? (
-              <ResponsiveContainer width="100%" height={400}>
+              <ResponsiveContainer width="100%" height={500}>
                 <RadarChart data={radarChartData}>
                   <PolarGrid stroke="var(--color-chart-grid)" />
                   <PolarAngleAxis
@@ -621,16 +637,15 @@ export function LeagueOverviewPage() {
                       color: 'var(--color-chart-tooltip-text)',
                     }}
                   />
-                  <Legend />
                   {radarTeamData
                     .filter((t) => activeTeamIds.has(t.rosterId))
-                    .map((team, idx) => (
+                    .map((team) => (
                       <Radar
                         key={team.rosterId}
                         name={team.name}
                         dataKey={`roster_${team.rosterId}`}
-                        stroke={RADAR_COLORS[idx % RADAR_COLORS.length]}
-                        fill={RADAR_COLORS[idx % RADAR_COLORS.length]}
+                        stroke={teamColorMap.get(team.rosterId) ?? RADAR_COLORS[0]}
+                        fill={teamColorMap.get(team.rosterId) ?? RADAR_COLORS[0]}
                         fillOpacity={0.15}
                       />
                     ))}
