@@ -13,6 +13,8 @@ import {
   Menu,
   X,
   Shield,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -179,22 +181,43 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">
             <h2 className="truncate text-base font-semibold text-gray-100 lg:text-lg">
-              {leagueName}{season ? ` — ${season}` : ''}
+              {leagueName}
             </h2>
             <div className="flex items-center gap-2">
-              <Select value={season} onValueChange={setSeason}>
-                <SelectTrigger className="w-28 lg:w-36">
-                  <SelectValue placeholder="Season" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSeasons.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                  {availableSeasons.length === 0 && (
-                    <SelectItem value="__loading__">Loading…</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              {(() => {
+                const currentIndex = availableSeasons.indexOf(season)
+                const isOldest = currentIndex >= availableSeasons.length - 1
+                const isNewest = currentIndex <= 0
+                return (
+                  <div className="flex items-center gap-1">
+                    {!isOldest && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setSeason(availableSeasons[currentIndex + 1])}
+                        aria-label="Previous season"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <span className="min-w-[3ch] text-center text-sm font-medium text-gray-100">
+                      {season}
+                    </span>
+                    {!isNewest && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setSeason(availableSeasons[currentIndex - 1])}
+                        aria-label="Next season"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                )
+              })()}
               <ThemeToggle />
             </div>
           </div>
