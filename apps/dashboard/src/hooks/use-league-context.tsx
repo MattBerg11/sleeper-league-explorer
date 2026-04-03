@@ -18,6 +18,7 @@ interface LeagueContextValue {
   leagueFamilies: LeagueFamily[]
   availableSeasons: string[]
   leagues: LeagueRow[]
+  leagueStatus: string
   isLoading: boolean
 }
 
@@ -65,6 +66,11 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
     return match?.leagueId ?? ''
   }, [leagueFamilies, leagueName, effectiveSeason])
 
+  const leagueStatus = useMemo(() => {
+    const league = leagues.find((l) => l.league_id === leagueId)
+    return league?.status ?? ''
+  }, [leagues, leagueId])
+
   const setLeagueName = useCallback((name: string) => {
     void navigate({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -89,6 +95,7 @@ export function LeagueProvider({ children }: LeagueProviderProps) {
       leagueFamilies,
       availableSeasons,
       leagues,
+      leagueStatus,
       isLoading,
     }}>
       {children}
