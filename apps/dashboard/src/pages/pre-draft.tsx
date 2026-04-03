@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorAlert } from '@/components/error-alert'
 import { OwnerAvatar } from '@/components/owner-avatar'
+import { RosterPopup } from '@/components/roster-popup'
 import {
   Table,
   TableBody,
@@ -27,6 +28,7 @@ import {
   useTradedPicks,
   usePlayerMap,
   useLeagues,
+  useStandings,
 } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { useDisplayName } from '@/hooks/use-display-name'
@@ -34,13 +36,19 @@ import { cn, formatRelativeTime } from '@/lib/utils'
 
 // --- Types ---
 
+interface DraftPick {
+  round: number
+  originalRosterId: number
+  type: 'own' | 'acquired' | 'traded'
+}
+
 interface TeamPickInfo {
   rosterId: number
   basePicks: number
   tradedAway: number
   acquired: number
   totalPicks: number
-  picksByRound: Map<number, 'own' | 'acquired'>
+  picks: DraftPick[]
 }
 
 type StrengthTier = 'Strong' | 'Average' | 'Rebuilding'
@@ -104,40 +112,44 @@ function computeStrengthTier(fpts: number, allFpts: number[]): StrengthTier {
 
 function computeTeamPicks(
   rosterId: number,
-  totalRosters: number,
+  totalRounds: number,
   tradedPicks: { round: number; roster_id: number; owner_id: number; previous_owner_id: number }[],
 ): TeamPickInfo {
-  const picksByRound = new Map<number, 'own' | 'acquired'>()
+  const picks: DraftPick[] = []
 
-  // Start with base picks (one per round)
-  for (let round = 1; round <= totalRosters; round++) {
-    picksByRound.set(round, 'own')
+  // Start with own picks (one per round)
+  for (let round = 1; round <= totalRounds; round++) {
+    picks.push({ round, originalRosterId: rosterId, type: 'own' })
   }
 
   let tradedAway = 0
   let acquired = 0
 
-  for (const pick of tradedPicks) {
-    // This pick originally belongs to roster_id
-    if (pick.roster_id === rosterId && pick.owner_id !== rosterId) {
-      // Our pick was traded away
+  for (const tp of tradedPicks) {
+    if (tp.roster_id === rosterId && tp.owner_id !== rosterId) {
+      // Our pick was traded away — mark it as traded
+      const idx = picks.findIndex(
+        (p) => p.round === tp.round && p.originalRosterId === rosterId && p.type === 'own',
+      )
+      if (idx !== -1) {
+        picks[idx] = { round: tp.round, originalRosterId: rosterId, type: 'traded' }
+      }
       tradedAway++
-      picksByRound.delete(pick.round)
     }
-    if (pick.owner_id === rosterId && pick.roster_id !== rosterId) {
+    if (tp.owner_id === rosterId && tp.roster_id !== rosterId) {
       // We acquired someone else's pick
+      picks.push({ round: tp.round, originalRosterId: tp.roster_id, type: 'acquired' })
       acquired++
-      picksByRound.set(pick.round, 'acquired')
     }
   }
 
   return {
     rosterId,
-    basePicks: totalRosters,
+    basePicks: totalRounds,
     tradedAway,
     acquired,
-    totalPicks: totalRosters - tradedAway + acquired,
-    picksByRound,
+    totalPicks: totalRounds - tradedAway + acquired,
+    picks,
   }
 }
 
@@ -150,7 +162,7 @@ function HeaderSkeleton() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-40" />
       </div>
-      <Skeleton className="h-8 w-28 rounded-full" />
+      <Skeleton className="h-8 w-28 rounded-lg" />
     </div>
   )
 }
@@ -164,7 +176,7 @@ function ActivityFeedSkeleton() {
       <CardContent className="space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-start gap-3">
-            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-5 w-16 rounded-lg" />
             <div className="flex-1 space-y-1">
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-3 w-20" />
@@ -300,10 +312,10 @@ interface TeamCardProps {
   playerMap: Map<string, string> | undefined
   rosterToName: Map<number, string>
   seasonTradedPicks: { round: number; roster_id: number; owner_id: number; previous_owner_id: number }[]
-  totalRounds: number
+  rosterToSlot: Map<number, number>
 }
 
-function TeamCard({ roster, owner, strengthTier, pickInfo, getName, playerMap, rosterToName, seasonTradedPicks, totalRounds }: TeamCardProps) {
+function TeamCard({ roster, owner, strengthTier, pickInfo, getName, playerMap, rosterToName, seasonTradedPicks, rosterToSlot }: TeamCardProps) {
   const [showPicks, setShowPicks] = useState(false)
   const [showPlayers, setShowPlayers] = useState(false)
   const displayName = owner ? getName(owner) : `Roster ${roster.roster_id}`
@@ -311,33 +323,34 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName, playerMap, r
   const budgetUsed = getWaiverBudget(roster.settings)
 
   const pickDetails = useMemo(() => {
-    const allRounds = new Set<number>()
-    for (let r = 1; r <= totalRounds; r++) allRounds.add(r)
-    for (const r of pickInfo.picksByRound.keys()) allRounds.add(r)
-    const sorted = [...allRounds].sort((a, b) => a - b)
-    return sorted.map((r) => {
-      const status = pickInfo.picksByRound.get(r)
-      if (status === 'own') {
-        return { round: r, label: 'Own pick', type: 'own' as const }
-      }
-      if (status === 'acquired') {
-        const trade = seasonTradedPicks.find(
-          (p) => p.owner_id === roster.roster_id && p.round === r && p.roster_id !== roster.roster_id,
-        )
-        const fromName = trade
-          ? (rosterToName.get(trade.roster_id) ?? `Roster ${trade.roster_id}`)
-          : 'Unknown'
-        return { round: r, label: `Acquired from ${fromName}`, type: 'acquired' as const }
-      }
-      const trade = seasonTradedPicks.find(
-        (p) => p.roster_id === roster.roster_id && p.round === r && p.owner_id !== roster.roster_id,
-      )
-      const toName = trade
-        ? (rosterToName.get(trade.owner_id) ?? `Roster ${trade.owner_id}`)
-        : 'Unknown'
-      return { round: r, label: `Traded to ${toName}`, type: 'traded' as const }
+    const sorted = [...pickInfo.picks].sort((a, b) => {
+      if (a.round !== b.round) return a.round - b.round
+      const slotA = rosterToSlot.get(a.originalRosterId) ?? 0
+      const slotB = rosterToSlot.get(b.originalRosterId) ?? 0
+      return slotA - slotB
     })
-  }, [pickInfo, roster.roster_id, seasonTradedPicks, rosterToName, totalRounds])
+
+    return sorted.map((pick) => {
+      const slot = rosterToSlot.get(pick.originalRosterId)
+      const slotStr = slot ? `${pick.round}.${String(slot).padStart(2, '0')}` : `Rd ${pick.round}`
+
+      if (pick.type === 'own') {
+        return { round: pick.round, slot: slotStr, label: 'Own pick', type: 'own' as const }
+      }
+      if (pick.type === 'acquired') {
+        const fromName = rosterToName.get(pick.originalRosterId) ?? `Roster ${pick.originalRosterId}`
+        return { round: pick.round, slot: slotStr, label: `from ${fromName}`, type: 'acquired' as const }
+      }
+      // traded
+      const tradedTo = seasonTradedPicks.find(
+        (p) => p.roster_id === roster.roster_id && p.round === pick.round && p.owner_id !== roster.roster_id,
+      )
+      const toName = tradedTo
+        ? (rosterToName.get(tradedTo.owner_id) ?? `Roster ${tradedTo.owner_id}`)
+        : 'Unknown'
+      return { round: pick.round, slot: slotStr, label: `to ${toName}`, type: 'traded' as const }
+    })
+  }, [pickInfo, roster.roster_id, seasonTradedPicks, rosterToName, rosterToSlot])
 
   return (
     <Card className="transition-colors hover:border-gray-600/70">
@@ -394,9 +407,9 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName, playerMap, r
                     </button>
                   </div>
                   <div className="mb-2 h-px bg-gray-700/50" />
-                  <div className="max-h-48 space-y-1.5 overflow-y-auto">
-                    {pickDetails.map((pick) => (
-                      <div key={pick.round} className="flex items-center gap-2 text-xs">
+                  <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                    {pickDetails.map((pick, i) => (
+                      <div key={`${pick.round}-${i}`} className="flex items-center gap-2 text-xs">
                         <span
                           className={cn(
                             'inline-block h-2 w-2 shrink-0 rounded-full',
@@ -405,13 +418,13 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName, playerMap, r
                             pick.type === 'traded' && 'bg-gray-700/40',
                           )}
                         />
-                        <span className="text-gray-400">Round {pick.round}</span>
-                        <span className="text-gray-500">—</span>
+                        <span className="w-10 shrink-0 font-mono font-medium text-gray-300">{pick.slot}</span>
                         <span
                           className={cn(
-                            pick.type === 'own' && 'text-gray-300',
+                            'truncate',
+                            pick.type === 'own' && 'text-gray-400',
                             pick.type === 'acquired' && 'text-win',
-                            pick.type === 'traded' && 'text-loss',
+                            pick.type === 'traded' && 'text-loss line-through',
                           )}
                         >
                           {pick.label}
@@ -447,40 +460,13 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName, playerMap, r
           </button>
         </div>
       </CardContent>
-      {showPlayers && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowPlayers(false)}
-        >
-          <div
-            className="mx-4 max-h-[80vh] w-full max-w-md overflow-y-auto rounded-lg border border-gray-700/50 bg-bg-secondary p-4 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <p className="font-semibold text-gray-100">{displayName} — Roster</p>
-              <button type="button" onClick={() => setShowPlayers(false)}>
-                <X className="h-4 w-4 text-gray-500 hover:text-gray-300" />
-              </button>
-            </div>
-            {rosterSize > 0 ? (
-              <div
-                className={cn(
-                  'grid gap-x-4 gap-y-1',
-                  rosterSize >= 20 ? 'grid-cols-3' : 'grid-cols-2',
-                )}
-              >
-                {(roster.players ?? []).map((playerId) => (
-                  <p key={playerId} className="truncate text-xs text-gray-300">
-                    {playerMap?.get(playerId) ?? playerId}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-sm text-gray-500">No players on roster</p>
-            )}
-          </div>
-        </div>
-      )}
+      <RosterPopup
+        open={showPlayers}
+        onClose={() => setShowPlayers(false)}
+        title={`${displayName} — Roster`}
+        players={roster.players ?? []}
+        playerMap={playerMap}
+      />
     </Card>
   )
 }
@@ -528,17 +514,29 @@ function DraftCapitalTable({ rosters, owners, teamPicks, totalRounds, getName }:
                     <span className="truncate">{name}</span>
                   </TableCell>
                   {rounds.map((r) => {
-                    const pickStatus = info?.picksByRound.get(r)
+                    const roundPicks = info?.picks.filter((p) => p.round === r) ?? []
+                    const hasOwn = roundPicks.some((p) => p.type === 'own')
+                    const hasAcquired = roundPicks.some((p) => p.type === 'acquired')
+                    const hasTraded = roundPicks.some((p) => p.type === 'traded')
+                    const count = roundPicks.filter((p) => p.type !== 'traded').length
                     return (
                       <TableCell key={r} className="text-center">
-                        {pickStatus === 'own' && (
+                        {count === 0 && hasTraded && (
+                          <span className="inline-block h-3 w-3 rounded-full bg-gray-700/40" title="Traded away" />
+                        )}
+                        {count === 1 && hasOwn && !hasAcquired && (
                           <span className="inline-block h-3 w-3 rounded-full bg-accent/60" title="Own pick" />
                         )}
-                        {pickStatus === 'acquired' && (
+                        {count === 1 && hasAcquired && !hasOwn && (
                           <span className="inline-block h-3 w-3 rounded-full bg-win/60" title="Acquired pick" />
                         )}
-                        {!pickStatus && (
-                          <span className="inline-block h-3 w-3 rounded-full bg-gray-700/40" title="Traded away" />
+                        {count > 1 && (
+                          <span className="inline-block rounded-full bg-win/60 px-1.5 text-[10px] font-bold text-white" title={`${count} picks`}>
+                            {count}
+                          </span>
+                        )}
+                        {count === 1 && hasOwn && hasAcquired && (
+                          <span className="inline-block h-3 w-3 rounded-full bg-win/60" title="Own + Acquired" />
                         )}
                       </TableCell>
                     )
@@ -577,6 +575,7 @@ export function PreDraftPage() {
   const { data: transactions = [], isLoading: txLoading } = useTransactions(leagueId)
   const { data: tradedPicks = [], isLoading: picksLoading } = useTradedPicks(leagueId)
   const { data: playerMap } = usePlayerMap()
+  const { data: standings = [] } = useStandings(leagueId)
   const { getName } = useDisplayName()
   const [sortBy, setSortBy] = useState<SortOption>('default')
 
@@ -602,6 +601,15 @@ export function PreDraftPage() {
     }
     return map
   }, [rosters, ownerMap, getName])
+
+  // Estimate draft slots: reverse standings order (worst record picks first = slot 1)
+  const rosterToSlot = useMemo(() => {
+    const map = new Map<number, number>()
+    // standings is already sorted by wins DESC, so reverse it for draft order
+    const reversed = [...standings].reverse()
+    reversed.forEach((s, i) => map.set(s.roster_id, i + 1))
+    return map
+  }, [standings])
 
   // Recent 10 transactions
   const recentTransactions = useMemo(
@@ -753,13 +761,13 @@ export function PreDraftPage() {
                 tradedAway: 0,
                 acquired: 0,
                 totalPicks: totalRosters,
-                picksByRound: new Map(),
+                picks: [],
               }}
               getName={getName}
               playerMap={playerMap}
               rosterToName={rosterToName}
               seasonTradedPicks={seasonTradedPicks}
-              totalRounds={totalRosters}
+              rosterToSlot={rosterToSlot}
             />
           )
         })}
