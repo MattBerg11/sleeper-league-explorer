@@ -1,9 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
-import { ArrowRightLeft, Plus, Minus, FileX, List, LayoutGrid, ChevronDown, ChevronRight } from 'lucide-react'
+import { ArrowRightLeft, Plus, Minus, FileX, List, LayoutGrid, ChevronDown, ChevronRight, Calendar, Users } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTransactions, usePlayerMap, useRosters, useOwners } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
@@ -80,8 +78,8 @@ function TradeCard({ tx, playerMap, rosterToOwnerName }: TradeCardProps) {
 
   return (
     <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between gap-2 mb-3">
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2">
             <ArrowRightLeft className="h-4 w-4 text-accent" />
             <Badge variant="default">Trade</Badge>
@@ -163,10 +161,10 @@ interface NonTradeCardProps {
 function NonTradeCard({ tx, playerMap, rosterToOwnerName, rosters }: NonTradeCardProps) {
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <ArrowRightLeft className="h-5 w-5 text-accent" />
+          <div className="flex items-center gap-2">
+            <ArrowRightLeft className="h-4 w-4 text-accent" />
             <div>
               <div className="flex items-center gap-2">
                 <Badge variant={TYPE_VARIANTS[tx.type] ?? 'outline'}>
@@ -185,7 +183,7 @@ function NonTradeCard({ tx, playerMap, rosterToOwnerName, rosters }: NonTradeCar
                   ) : null
                 })()}
               </div>
-              <div className="mt-2 space-y-1">
+              <div className="mt-1 space-y-1">
                 {tx.adds && Object.entries(tx.adds).map(([playerId, rosterId]) => (
                   <div key={`add-${playerId}`} className="flex items-center gap-2 text-sm">
                     <Plus className="h-3 w-3 text-win" />
@@ -317,7 +315,7 @@ function CollapsibleGroup({ group, viewMode, playerMap, rosterToOwnerName, roste
   const [open, setOpen] = useState(true)
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -356,7 +354,7 @@ function TransactionList({ transactions, viewMode, playerMap, rosterToOwnerName,
       className={cn(
         viewMode === 'grid'
           ? 'grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-          : 'space-y-3',
+          : 'space-y-2',
       )}
     >
       {transactions.map((tx) => (
@@ -453,16 +451,16 @@ export function TransactionFeedPage() {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Type filter tablist */}
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by type">
+        {/* Type filter segmented control */}
+        <div className="flex rounded-lg bg-gray-800/60 p-0.5" role="group" aria-label="Filter by type">
           <button
             type="button"
             onClick={selectAll}
             className={cn(
-              'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              'rounded-lg px-3 py-1 text-xs font-medium transition-colors',
               isAllActive
-                ? 'bg-accent text-white'
-                : 'bg-bg-secondary text-gray-400 hover:text-gray-200',
+                ? 'bg-accent text-white shadow-sm'
+                : 'text-gray-400 hover:text-gray-200',
             )}
           >
             All
@@ -473,10 +471,10 @@ export function TransactionFeedPage() {
               type="button"
               onClick={() => toggleType(type)}
               className={cn(
-                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                'rounded-lg px-3 py-1 text-xs font-medium transition-colors',
                 selectedTypes.has(type)
-                  ? 'bg-accent text-white'
-                  : 'bg-bg-secondary text-gray-400 hover:text-gray-200',
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200',
               )}
             >
               {TYPE_LABELS[type] ?? type}
@@ -485,38 +483,76 @@ export function TransactionFeedPage() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Group-by select */}
-          <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-            <SelectTrigger className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No Grouping</SelectItem>
-              <SelectItem value="week">By Week</SelectItem>
-              <SelectItem value="team">By Team</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Group-by segmented control */}
+          <div className="flex rounded-lg bg-gray-800/60 p-0.5" role="group" aria-label="Group by">
+            <button
+              type="button"
+              onClick={() => setGroupBy('none')}
+              className={cn(
+                'rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+                groupBy === 'none'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200',
+              )}
+            >
+              None
+            </button>
+            <button
+              type="button"
+              onClick={() => setGroupBy('week')}
+              className={cn(
+                'flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+                groupBy === 'week'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200',
+              )}
+            >
+              <Calendar className="h-3 w-3" />
+              Week
+            </button>
+            <button
+              type="button"
+              onClick={() => setGroupBy('team')}
+              className={cn(
+                'flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+                groupBy === 'team'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200',
+              )}
+            >
+              <Users className="h-3 w-3" />
+              Team
+            </button>
+          </div>
 
           {/* View mode toggle */}
-          <div className="flex items-center rounded-md border border-gray-700/50">
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
+          <div className="flex rounded-lg bg-gray-800/60 p-0.5" role="group" aria-label="View mode">
+            <button
+              type="button"
               onClick={() => setViewMode('list')}
               aria-label="List view"
-              className="rounded-r-none"
+              className={cn(
+                'rounded-lg px-2 py-1 transition-colors',
+                viewMode === 'list'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200',
+              )}
             >
               <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              size="sm"
+            </button>
+            <button
+              type="button"
               onClick={() => setViewMode('grid')}
               aria-label="Grid view"
-              className="rounded-l-none"
+              className={cn(
+                'rounded-lg px-2 py-1 transition-colors',
+                viewMode === 'grid'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200',
+              )}
             >
               <LayoutGrid className="h-4 w-4" />
-            </Button>
+            </button>
           </div>
         </div>
       </div>
