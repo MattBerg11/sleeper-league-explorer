@@ -68,17 +68,19 @@ export function HeadToHeadPage() {
   const team1Info = standings.find((s) => s.roster_id === team1Id)
   const team2Info = standings.find((s) => s.roster_id === team2Id)
 
-  function handleTeam1Select(rosterId: number) {
+  function handleTeamSelect(rosterId: number) {
     if (team1Id === rosterId) {
-      setTeam1Id(null)
-    } else {
+      setTeam1Id(team2Id)
+      setTeam2Id(null)
+    } else if (team2Id === rosterId) {
+      setTeam2Id(null)
+    } else if (team1Id == null) {
       setTeam1Id(rosterId)
-      if (team2Id === rosterId) setTeam2Id(null)
+    } else if (team2Id == null) {
+      setTeam2Id(rosterId)
+    } else {
+      setTeam2Id(rosterId)
     }
-  }
-
-  function handleTeam2Select(rosterId: number) {
-    setTeam2Id(team2Id === rosterId ? null : rosterId)
   }
 
   function getTeamName(s: { display_name: string | null; team_name?: string | null; roster_id: number }) {
@@ -139,73 +141,34 @@ export function HeadToHeadPage() {
         </div>
       </div>
 
-      {/* Team 1 Selector */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-gray-400">Select Team 1</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            {standings.map((s) => (
-              <button
-                key={s.roster_id}
-                onClick={() => handleTeam1Select(s.roster_id)}
-                className={cn(
-                  'flex flex-col items-center gap-1 rounded-lg p-2 transition-colors',
-                  team1Id === s.roster_id
-                    ? 'ring-2 ring-accent bg-accent/10'
+      {/* Team Selector */}
+      <div>
+        <p className="mb-2 text-sm text-gray-400">Select two teams:</p>
+        <div className="flex flex-wrap gap-2">
+          {standings.map((s) => (
+            <button
+              key={s.roster_id}
+              onClick={() => handleTeamSelect(s.roster_id)}
+              title={getTeamName(s)}
+              className={cn(
+                'rounded-full p-0.5 transition-colors',
+                team1Id === s.roster_id
+                  ? 'ring-2 ring-accent bg-accent/10'
+                  : team2Id === s.roster_id
+                    ? 'ring-2 ring-highlight bg-highlight/10'
                     : 'hover:bg-bg-secondary',
-                )}
-                aria-pressed={team1Id === s.roster_id}
-              >
-                <OwnerAvatar
-                  avatarId={s.owner_avatar}
-                  name={getTeamName(s)}
-                  size="lg"
-                />
-                <span className="max-w-16 truncate text-xs text-gray-300">
-                  {getTeamName(s)}
-                </span>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Team 2 Selector */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-gray-400">Select Team 2</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            {standings
-              .filter((s) => s.roster_id !== team1Id)
-              .map((s) => (
-                <button
-                  key={s.roster_id}
-                  onClick={() => handleTeam2Select(s.roster_id)}
-                  className={cn(
-                    'flex flex-col items-center gap-1 rounded-lg p-2 transition-colors',
-                    team2Id === s.roster_id
-                      ? 'ring-2 ring-accent bg-accent/10'
-                      : 'hover:bg-bg-secondary',
-                  )}
-                  aria-pressed={team2Id === s.roster_id}
-                >
-                  <OwnerAvatar
-                    avatarId={s.owner_avatar}
-                    name={getTeamName(s)}
-                    size="lg"
-                  />
-                  <span className="max-w-16 truncate text-xs text-gray-300">
-                    {getTeamName(s)}
-                  </span>
-                </button>
-              ))}
-          </div>
-        </CardContent>
-      </Card>
+              )}
+              aria-pressed={team1Id === s.roster_id || team2Id === s.roster_id}
+            >
+              <OwnerAvatar
+                avatarId={s.owner_avatar}
+                name={getTeamName(s)}
+                size="sm"
+              />
+            </button>
+          ))}
+        </div>
+      </div>
 
       {team1Id != null && team2Id != null && (
         <>
