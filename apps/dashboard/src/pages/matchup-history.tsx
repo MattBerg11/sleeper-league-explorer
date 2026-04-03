@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useMatchupPairs, useAllMatchupPairs, useNFLState, useLeagues } from '@/hooks/use-league-data'
+import { useMatchupPairs, useAllMatchupPairs, useNFLState, useLeagues, useOwners, useRosters } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { useDisplayName } from '@/hooks/use-display-name'
+import { OwnerAvatar } from '@/components/owner-avatar'
 import { ErrorAlert } from '@/components/error-alert'
 import { cn } from '@/lib/utils'
 import { MAX_REGULAR_SEASON_WEEKS } from '@sleeper-explorer/shared'
@@ -41,6 +42,19 @@ export function MatchupHistoryPage() {
 
   const { data: matchups = [], isLoading, error } = useMatchupPairs(leagueId, week)
   const { data: allMatchups = [] } = useAllMatchupPairs(leagueId)
+  const { data: owners = [] } = useOwners(leagueId)
+  const { data: rosters = [] } = useRosters(leagueId)
+
+  const rosterAvatarMap = useMemo(() => {
+    const ownerMap = new Map(owners.map((o) => [o.user_id, o.avatar]))
+    const map = new Map<number, string | null>()
+    for (const r of rosters) {
+      if (r.owner_id) {
+        map.set(r.roster_id, ownerMap.get(r.owner_id) ?? null)
+      }
+    }
+    return map
+  }, [owners, rosters])
 
   const teams = useMemo(() => {
     const teamMap = new Map<number, string>()
@@ -71,7 +85,7 @@ export function MatchupHistoryPage() {
 
     const computed = Array.from(weekData.entries())
       .map(([w, data]) => ({
-        week: `Wk ${w}`,
+        week: `${w}`,
         avgScore: data._count > 0 ? Math.round((data._total / data._count) * 100) / 100 : undefined,
         ...Object.fromEntries(
           Object.entries(data)
@@ -79,11 +93,11 @@ export function MatchupHistoryPage() {
             .map(([k, v]) => [k, Math.round(v * 100) / 100]),
         ),
       }))
-      .sort((a, b) => parseInt(a.week.slice(3)) - parseInt(b.week.slice(3)))
+      .sort((a, b) => parseInt(a.week) - parseInt(b.week))
 
     const full: typeof computed = []
     for (let w = 1; w <= MAX_REGULAR_SEASON_WEEKS; w++) {
-      const label = `Wk ${w}`
+      const label = `${w}`
       const existing = computed.find((d) => d.week === label)
       full.push(existing ?? { week: label, avgScore: undefined })
     }
@@ -159,9 +173,14 @@ export function MatchupHistoryPage() {
             const team2Wins = (matchup.team2_points ?? 0) > (matchup.team1_points ?? 0)
             return (
               <Card key={matchup.matchup_id}>
-                <CardContent className="p-4">
+                <CardContent className="p-3">
                   <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
-                    <div className="flex-1 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <OwnerAvatar
+                        avatarId={rosterAvatarMap.get(matchup.team1_roster_id) ?? null}
+                        name={getName({ display_name: matchup.team1_name ?? `Team ${matchup.team1_roster_id}`, team_name: matchup.team1_team_name })}
+                        size="md"
+                      />
                       <p className={`font-semibold ${team1Wins ? 'text-win' : 'text-gray-100'}`}>
                         {getName({ display_name: matchup.team1_name ?? `Team ${matchup.team1_roster_id}`, team_name: matchup.team1_team_name })}
                       </p>
@@ -171,7 +190,12 @@ export function MatchupHistoryPage() {
                       {team1Wins && <Badge variant="win">W</Badge>}
                     </div>
                     <span className="px-4 text-lg font-bold text-gray-500">vs</span>
-                    <div className="flex-1 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <OwnerAvatar
+                        avatarId={rosterAvatarMap.get(matchup.team2_roster_id) ?? null}
+                        name={getName({ display_name: matchup.team2_name ?? `Team ${matchup.team2_roster_id}`, team_name: matchup.team2_team_name })}
+                        size="md"
+                      />
                       <p className={`font-semibold ${team2Wins ? 'text-win' : 'text-gray-100'}`}>
                         {getName({ display_name: matchup.team2_name ?? `Team ${matchup.team2_roster_id}`, team_name: matchup.team2_team_name })}
                       </p>
@@ -211,7 +235,7 @@ export function MatchupHistoryPage() {
                   aria-pressed={enabledTeams.has(team.id)}
                   aria-label={`Toggle ${team.name} scoring line`}
                   className={cn(
-                    'rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors border',
+                    'rounded-lg px-2.5 py-0.5 text-xs font-medium transition-colors border',
                     enabledTeams.has(team.id)
                       ? 'border-transparent text-white'
                       : 'border-gray-600 text-gray-400 hover:text-gray-200',
@@ -240,8 +264,8 @@ export function MatchupHistoryPage() {
                   itemStyle={{ color: 'var(--color-chart-line)' }}
                 />
                 <ReferenceArea
-                  x1={`Wk ${playoffStartWeek}`}
-                  x2={`Wk ${MAX_REGULAR_SEASON_WEEKS}`}
+                  x1={`${playoffStartWeek}`}
+                  x2={`${MAX_REGULAR_SEASON_WEEKS}`}
                   fill="var(--color-accent)"
                   fillOpacity={0.08}
                   label={{ value: 'Playoffs', position: 'insideTop', fill: 'var(--color-muted-foreground)', fontSize: 11, fontWeight: 600 }}
