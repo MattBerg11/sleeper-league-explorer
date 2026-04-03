@@ -1,27 +1,32 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sleeper League Explorer</title>
-    <meta name="description" content="Interactive fantasy football dashboard for Sleeper leagues — standings, matchups, draft recaps, and more." />
-    <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <meta property="og:title" content="Sleeper League Explorer" />
-    <meta property="og:description" content="Interactive fantasy football dashboard for Sleeper leagues" />
-    <meta property="og:type" content="website" />
-    <script>
-      // Prevent flash of wrong theme
-      (function() {
-        var t = localStorage.getItem('sleeper-explorer-theme') || 'dark';
-        if (t === 'system') t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        document.documentElement.classList.add(t === 'dark' ? 'dark' : 'light');
-      })();
-    </script>
-  </head>
-  <body class="min-h-screen bg-background text-foreground antialiased">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<html lang="en" style="background-color: #1a1a2e;">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sleeper League Explorer</title>
+  <meta name="description"
+    content="Interactive fantasy football dashboard for Sleeper leagues — standings, matchups, draft recaps, and more." />
+  <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <meta property="og:title" content="Sleeper League Explorer" />
+  <meta property="og:description" content="Interactive fantasy football dashboard for Sleeper leagues" />
+  <meta property="og:type" content="website" />
+  <script>
+    // Prevent flash of wrong theme
+    (function () {
+      var t = localStorage.getItem('sleeper-explorer-theme') || 'dark';
+      if (t === 'system') t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.classList.add(t === 'dark' ? 'dark' : 'light');
+      document.documentElement.style.backgroundColor = t === 'dark' ? '#1a1a2e' : '#f5f5fa';
+    })();
+  </script>
+</head>
+
+<body class="min-h-screen bg-background text-foreground antialiased">
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
