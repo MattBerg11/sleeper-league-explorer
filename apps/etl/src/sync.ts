@@ -40,8 +40,11 @@ import {
  *  - full:         Runs everything (nfl_state, players, all league data for all weeks)
  *  - daily:        nfl_state + league metadata (leagues, owners, rosters)
  *                  Does NOT include players — use 'players-only' separately.
+ *                  Only syncs owners/rosters for active (non-complete) leagues.
  *  - players-only: Players only (heavy — 11k+ rows). Run separately on its own schedule.
  *  - leagues-only: Incremental league data sync (cron every 6h)
+ *                  Syncs nfl_state first, then active leagues only.
+ *                  Skips completed historical leagues (status === "complete").
  *                  Matchups/transactions limited to current + previous week.
  *                  Drafts skipped if already complete in DB.
  *  - initiate:     One-time sync for NEW leagues not yet in DB.
@@ -192,8 +195,8 @@ async function syncPlayers(
     const rows = Object.values(players).map(transformPlayer)
 
     const batches = chunk(rows, PLAYER_BATCH_SIZE)
-    for (let i = 0; i < batches.length; i++) {
-      await upsertBatch(supabase, 'players', batches[i]!, 'player_id')
+    for (const batch of batches) {
+      await upsertBatch(supabase, 'players', batch, 'player_id')
     }
 
     console.log(`Synced ${rows.length.toLocaleString()} players in ${batches.length} batches`)
@@ -218,7 +221,8 @@ async function resolveLeagueChain(
   const queue = [...startIds]
 
   while (queue.length > 0) {
-    const leagueId = queue.shift()!
+    const leagueId = queue.shift()
+    if (!leagueId) continue
     if (visited.has(leagueId)) continue
     visited.add(leagueId)
 
@@ -675,11 +679,20 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
     results.push(leaguesResult)
 
     if (leaguesResult.success && leagues.length > 0) {
-      const ownersResult = await syncOwners(client, supabase, leagues)
-      results.push(ownersResult)
+      // Only sync owners/rosters for active (non-complete) leagues
+      const activeLeagues = leagues.filter((l) => l.status !== 'complete')
+      const skippedCount = leagues.length - activeLeagues.length
+      if (skippedCount > 0) {
+        console.log(`Skipping ${skippedCount} completed league(s) for owners/rosters sync`)
+      }
 
-      const rostersResult = await syncRosters(client, supabase, leagues)
-      results.push(rostersResult)
+      if (activeLeagues.length > 0) {
+        const ownersResult = await syncOwners(client, supabase, activeLeagues)
+        results.push(ownersResult)
+
+        const rostersResult = await syncRosters(client, supabase, activeLeagues)
+        results.push(rostersResult)
+      }
     }
 
     return { results }
@@ -735,15 +748,43 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
 
   // --- leagues-only mode (incremental) ---
   if (syncMode === 'leagues-only') {
-    const { result: leaguesResult, leagues } = await syncLeagues(client, supabase, leagueIds)
-    results.push(leaguesResult)
-    if (!leaguesResult.success || leagues.length === 0) return { results }
+    // Sync nfl_state first so current week is available in DB
+    const nflStateResult = await syncNFLState(client, supabase)
+    results.push(nflStateResult)
+
+    // Resolve the full league chain but only upsert active (non-complete) leagues
+    console.log('Resolving league chains...')
+    const allLeagues = await resolveLeagueChain(client, leagueIds)
+    if (allLeagues.length === 0) {
+      console.warn('No leagues found from provided IDs.')
+      results.push({ entity: 'leagues', success: true, count: 0 })
+      return { results }
+    }
+
+    const activeLeagues = allLeagues.filter((l) => l.status !== 'complete')
+    const skippedCount = allLeagues.length - activeLeagues.length
+    if (skippedCount > 0) {
+      console.log(`Skipping ${skippedCount} completed historical league(s)`)
+    }
+
+    if (activeLeagues.length === 0) {
+      console.log('All leagues are completed. Nothing to sync incrementally.')
+      results.push({ entity: 'leagues', success: true, count: 0 })
+      return { results }
+    }
+
+    // Upsert only active league rows
+    const leagueRows = activeLeagues.map(transformLeague)
+    await upsertBatch(supabase, 'leagues', leagueRows, 'league_id')
+    console.log(`Synced ${activeLeagues.length} active league(s) (skipped ${skippedCount} complete)`)
+    results.push({ entity: 'leagues', success: true, count: activeLeagues.length })
 
     // Determine current week for incremental sync
     const currentWeek = await getCurrentWeek(client, supabase)
     console.log(`Incremental sync using current week: ${currentWeek}`)
 
-    await runLeagueIncrementalSync(client, supabase, leagues, currentWeek, results)
+    // Only sync dependent entities for active leagues
+    await runLeagueIncrementalSync(client, supabase, activeLeagues, currentWeek, results)
 
     return { results }
   }
