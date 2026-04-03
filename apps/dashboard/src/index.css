@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 @theme {
+  /* Page background & foreground (consumed by bg-background / text-foreground) */
+  --color-background: oklch(0.15 0.02 250);
+  --color-foreground: oklch(0.95 0.01 250);
+
   /* Custom color palette (dark mode defaults) */
   --color-bg-primary: oklch(0.15 0.02 250);
   --color-bg-secondary: oklch(0.20 0.02 250);
@@ -23,6 +27,8 @@
 
 /* Light mode overrides */
 :root:not(.dark) {
+  --color-background: oklch(0.97 0.01 250);
+  --color-foreground: oklch(0.15 0.01 250);
   --color-bg-primary: oklch(0.97 0.01 250);
   --color-bg-secondary: oklch(0.93 0.01 250);
   --color-win: oklch(0.42 0.20 160);
@@ -38,14 +44,46 @@
 }
 
 /* Light mode text overrides — prevent white-on-white */
-:root:not(.dark) .text-gray-100 { color: oklch(0.20 0.01 250); }
-:root:not(.dark) .text-gray-200 { color: oklch(0.25 0.01 250); }
-:root:not(.dark) .text-gray-300 { color: oklch(0.30 0.01 250); }
-:root:not(.dark) .text-gray-400 { color: oklch(0.40 0.01 250); }
-:root:not(.dark) .text-gray-500 { color: oklch(0.50 0.01 250); }
-:root:not(.dark) .border-gray-700\/50 { border-color: oklch(0.82 0.01 250); }
-:root:not(.dark) .border-gray-600\/50 { border-color: oklch(0.78 0.01 250); }
-:root:not(.dark) .bg-gray-700\/50 { background-color: oklch(0.90 0.01 250); }
-:root:not(.dark) .bg-gray-800\/50 { background-color: oklch(0.88 0.01 250); }
-:root:not(.dark) .bg-gray-700\/40 { background-color: oklch(0.90 0.01 250); }
-:root:not(.dark) .text-muted-foreground { color: oklch(0.45 0.01 250); }
+:root:not(.dark) .text-gray-100 {
+  color: oklch(0.20 0.01 250);
+}
+
+:root:not(.dark) .text-gray-200 {
+  color: oklch(0.25 0.01 250);
+}
+
+:root:not(.dark) .text-gray-300 {
+  color: oklch(0.30 0.01 250);
+}
+
+:root:not(.dark) .text-gray-400 {
+  color: oklch(0.40 0.01 250);
+}
+
+:root:not(.dark) .text-gray-500 {
+  color: oklch(0.50 0.01 250);
+}
+
+:root:not(.dark) .border-gray-700\/50 {
+  border-color: oklch(0.82 0.01 250);
+}
+
+:root:not(.dark) .border-gray-600\/50 {
+  border-color: oklch(0.78 0.01 250);
+}
+
+:root:not(.dark) .bg-gray-700\/50 {
+  background-color: oklch(0.90 0.01 250);
+}
+
+:root:not(.dark) .bg-gray-800\/50 {
+  background-color: oklch(0.88 0.01 250);
+}
+
+:root:not(.dark) .bg-gray-700\/40 {
+  background-color: oklch(0.90 0.01 250);
+}
+
+:root:not(.dark) .text-muted-foreground {
+  color: oklch(0.45 0.01 250);
+}
