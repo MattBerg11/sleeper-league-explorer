@@ -12,7 +12,6 @@ import {
   Clipboard,
   Menu,
   X,
-  Shield,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -116,19 +115,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="border-b border-gray-700/50 px-4 py-2">
-          <button
-            type="button"
-            onClick={() => setMode(mode === 'team' ? 'user' : 'team')}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-400 transition-colors hover:bg-gray-800/50 hover:text-gray-200"
-            title={mode === 'team' ? 'Showing team names' : 'Showing user names'}
-          >
-            {mode === 'team' ? (
-              <Shield className="h-3.5 w-3.5" />
-            ) : (
-              <Users className="h-3.5 w-3.5" />
-            )}
-            <span>{mode === 'team' ? 'Team Names' : 'User Names'}</span>
-          </button>
+          <div className="flex w-full rounded-full bg-gray-800/60 p-0.5">
+            <button
+              type="button"
+              onClick={() => setMode('team')}
+              className={cn(
+                'flex-1 rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                mode === 'team'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200',
+              )}
+            >
+              Teams
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('user')}
+              className={cn(
+                'flex-1 rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                mode === 'user'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200',
+              )}
+            >
+              Users
+            </button>
+          </div>
         </div>
 
         <nav className="flex-1 space-y-4 p-4">
@@ -180,9 +192,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Button>
 
           <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">
-            <h2 className="truncate text-base font-semibold text-gray-100 lg:text-lg">
-              {leagueName}
-            </h2>
+            <Select value={leagueName} onValueChange={setLeagueName}>
+              <SelectTrigger className="h-auto w-auto gap-1 border-0 bg-transparent px-0 py-0 text-base font-semibold text-gray-100 ring-offset-0 focus:ring-0 focus:ring-offset-0 lg:text-lg [&>span]:line-clamp-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {leagueFamilies.map((family) => (
+                  <SelectItem key={family.name} value={family.name}>
+                    {family.name}
+                  </SelectItem>
+                ))}
+                {leagueFamilies.length === 0 && (
+                  <SelectItem value={leagueName}>Loading…</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
             <div className="flex items-center gap-2">
               {(() => {
                 const currentIndex = availableSeasons.indexOf(season)
@@ -190,31 +214,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 const isNewest = currentIndex <= 0
                 return (
                   <div className="flex items-center gap-1">
-                    {!isOldest && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setSeason(availableSeasons[currentIndex + 1])}
-                        aria-label="Previous season"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn('h-8 w-8', isOldest && 'invisible')}
+                      onClick={() => setSeason(availableSeasons[currentIndex + 1])}
+                      aria-label="Previous season"
+                      tabIndex={isOldest ? -1 : undefined}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
                     <span className="min-w-[3ch] text-center text-sm font-medium text-gray-100">
                       {season}
                     </span>
-                    {!isNewest && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setSeason(availableSeasons[currentIndex - 1])}
-                        aria-label="Next season"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn('h-8 w-8', isNewest && 'invisible')}
+                      onClick={() => setSeason(availableSeasons[currentIndex - 1])}
+                      aria-label="Next season"
+                      tabIndex={isNewest ? -1 : undefined}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
                 )
               })()}
