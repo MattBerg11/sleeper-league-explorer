@@ -8,12 +8,12 @@ import {
 } from '@tanstack/react-table'
 import type { SortingState } from '@tanstack/react-table'
 import { Link } from '@tanstack/react-router'
-import { ArrowUpDown, TrendingUp, Users, Trophy } from 'lucide-react'
+import { ArrowUpDown, Users, Trophy, CalendarDays, BarChart3, Target, Flame } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useStandings, useRosters, useOwners, useLeagues, usePlayoffBracket } from '@/hooks/use-league-data'
+import { useStandings, useRosters, useOwners, useLeagues, usePlayoffBracket, useNFLState, useAllMatchupPairs } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
@@ -70,6 +70,8 @@ export function LeagueOverviewPage() {
   const { data: owners = [] } = useOwners(leagueId)
   const { data: leagues = [] } = useLeagues()
   const { data: playoffBracket = [] } = usePlayoffBracket(leagueId)
+  const { data: nflState } = useNFLState()
+  const { data: allMatchups = [] } = useAllMatchupPairs(leagueId)
   const { getName } = useDisplayName()
   const [sorting, setSorting] = useState<SortingState>([{ id: 'total_points_for', desc: true }])
   const [activeTab, setActiveTab] = useState<TabId>('standings')
@@ -199,6 +201,43 @@ export function LeagueOverviewPage() {
     })
   }, [radarTeamData, activeTeamIds])
 
+  const latestWeekMatchups = useMemo(() => {
+    if (allMatchups.length === 0) return []
+    // Find the latest week where both teams have points (completed matchups)
+    const completedMatchups = allMatchups.filter(
+      (m) => m.team1_points != null && m.team2_points != null,
+    )
+    if (completedMatchups.length === 0) return []
+    const maxWeek = Math.max(...completedMatchups.map((m) => m.week))
+    return completedMatchups.filter((m) => m.week === maxWeek)
+  }, [allMatchups])
+
+  const closestMatchup = useMemo(() => {
+    if (latestWeekMatchups.length === 0) return null
+    return latestWeekMatchups.reduce((closest, m) => {
+      const diff = Math.abs((m.team1_points ?? 0) - (m.team2_points ?? 0))
+      const closestDiff = Math.abs((closest.team1_points ?? 0) - (closest.team2_points ?? 0))
+      return diff < closestDiff ? m : closest
+    })
+  }, [latestWeekMatchups])
+
+  const biggestBlowout = useMemo(() => {
+    if (latestWeekMatchups.length === 0) return null
+    return latestWeekMatchups.reduce((biggest, m) => {
+      const diff = Math.abs((m.team1_points ?? 0) - (m.team2_points ?? 0))
+      const biggestDiff = Math.abs((biggest.team1_points ?? 0) - (biggest.team2_points ?? 0))
+      return diff > biggestDiff ? m : biggest
+    })
+  }, [latestWeekMatchups])
+
+  const leagueAvgPPG = useMemo(() => {
+    if (standings.length === 0) return 0
+    const totalGamesPlayed = standings.reduce((sum, s) => sum + s.wins + s.losses + s.ties, 0)
+    if (totalGamesPlayed === 0) return 0
+    const totalPoints = standings.reduce((sum, s) => sum + s.total_points_for, 0)
+    return totalPoints / totalGamesPlayed
+  }, [standings])
+
   const toggleTeam = (rosterId: number) => {
     const next = new Set(activeTeamIds)
     if (next.has(rosterId)) {
@@ -313,8 +352,8 @@ export function LeagueOverviewPage() {
   if (isLoading) {
     return (
       <div role="status" aria-label="Loading league overview" className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-28" />
           ))}
         </div>
@@ -338,24 +377,43 @@ export function LeagueOverviewPage() {
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">League Overview</h2>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Total Teams</CardTitle>
-            <Users className="h-4 w-4 text-accent" />
+            <CardTitle className="text-sm font-medium text-gray-400">NFL Week</CardTitle>
+            <CalendarDays className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-gray-100">{totalTeams}</p>
+            {nflState ? (
+              <>
+                <p className="text-3xl font-bold text-gray-100">Week {nflState.display_week}</p>
+                <p className="text-sm text-gray-400">{nflState.season} &middot; {nflState.season_type.replace('_', ' ')}</p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-400">Unavailable</p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Games Played</CardTitle>
-            <TrendingUp className="h-4 w-4 text-accent" />
+            <CardTitle className="text-sm font-medium text-gray-400">League Status</CardTitle>
+            <Users className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-gray-100">{totalGames}</p>
+            <p className="text-3xl font-bold text-gray-100 capitalize">{league?.status ?? 'Unknown'}</p>
+            <p className="text-sm text-gray-400">{totalTeams} teams &middot; {totalGames} games played</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">League Avg PPG</CardTitle>
+            <BarChart3 className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-gray-100">{leagueAvgPPG.toFixed(1)}</p>
+            <p className="text-sm text-gray-400">points per game</p>
           </CardContent>
         </Card>
 
@@ -366,7 +424,57 @@ export function LeagueOverviewPage() {
           </CardHeader>
           <CardContent>
             <p className="text-xl font-bold text-highlight">{highestScorer ? getName({ display_name: highestScorer.display_name ?? 'N/A', team_name: highestScorer.team_name }) : 'N/A'}</p>
-            <p className="text-sm text-gray-400">{highestScorer?.total_points_for.toFixed(2) ?? '0'} pts</p>
+            <p className="text-sm text-gray-400">
+              {highestScorer?.total_points_for.toFixed(2) ?? '0'} pts
+              {highestScorer && (() => {
+                const streak = highestScorer.wins > highestScorer.losses ? `${highestScorer.wins}W` : `${highestScorer.losses}L`
+                return ` · ${streak}`
+              })()}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Closest Game</CardTitle>
+            <Target className="h-4 w-4 text-win" />
+          </CardHeader>
+          <CardContent>
+            {closestMatchup ? (
+              <>
+                <p className="text-lg font-bold text-gray-100">
+                  {Math.abs((closestMatchup.team1_points ?? 0) - (closestMatchup.team2_points ?? 0)).toFixed(2)} pt margin
+                </p>
+                <p className="text-sm text-gray-400">
+                  {getName({ display_name: closestMatchup.team1_name ?? 'Team 1', team_name: closestMatchup.team1_team_name })} vs {getName({ display_name: closestMatchup.team2_name ?? 'Team 2', team_name: closestMatchup.team2_team_name })}
+                </p>
+                <p className="text-xs text-gray-500">Week {closestMatchup.week}</p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-400">No matchups yet</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Biggest Blowout</CardTitle>
+            <Flame className="h-4 w-4 text-loss" />
+          </CardHeader>
+          <CardContent>
+            {biggestBlowout ? (
+              <>
+                <p className="text-lg font-bold text-gray-100">
+                  {Math.abs((biggestBlowout.team1_points ?? 0) - (biggestBlowout.team2_points ?? 0)).toFixed(2)} pt margin
+                </p>
+                <p className="text-sm text-gray-400">
+                  {getName({ display_name: biggestBlowout.team1_name ?? 'Team 1', team_name: biggestBlowout.team1_team_name })} vs {getName({ display_name: biggestBlowout.team2_name ?? 'Team 2', team_name: biggestBlowout.team2_team_name })}
+                </p>
+                <p className="text-xs text-gray-500">Week {biggestBlowout.week}</p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-400">No matchups yet</p>
+            )}
           </CardContent>
         </Card>
       </div>
