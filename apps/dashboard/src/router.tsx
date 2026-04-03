@@ -3,7 +3,7 @@ import type { ErrorComponentProps } from '@tanstack/react-router'
 import { z } from 'zod'
 import { Layout } from '@/components/layout'
 import { ErrorAlert } from '@/components/error-alert'
-import { LeagueProvider } from '@/hooks/use-league-context'
+import { LeagueProvider, useLeagueContext } from '@/hooks/use-league-context'
 import { LeagueOverviewPage } from '@/pages/league-overview'
 import { PlayerExplorerPage } from '@/pages/player-explorer'
 import { MatchupHistoryPage } from '@/pages/matchup-history'
@@ -44,10 +44,16 @@ const rootRoute = createRootRoute({
   validateSearch: searchSchema,
 })
 
+function IndexPage() {
+  const { leagueStatus } = useLeagueContext()
+  const isPreDraft = leagueStatus !== '' && leagueStatus !== 'in_season' && leagueStatus !== 'complete'
+  return isPreDraft ? <PreDraftPage /> : <LeagueOverviewPage />
+}
+
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: LeagueOverviewPage,
+  component: IndexPage,
 })
 
 const playersRoute = createRoute({
