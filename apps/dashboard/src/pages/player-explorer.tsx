@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Search, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -8,25 +8,71 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ErrorAlert } from '@/components/error-alert'
-import { usePlayers } from '@/hooks/use-league-data'
+import { TeamLogo } from '@/components/team-logo'
+import { usePlayers, useRosters } from '@/hooks/use-league-data'
+import { useLeagueContext } from '@/hooks/use-league-context'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 
 const POSITIONS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF'] as const
 const PAGE_SIZE = 50
 
+function getInjuryBadgeVariant(status: string): 'destructive' | 'outline' {
+  switch (status.toLowerCase()) {
+    case 'out':
+    case 'ir':
+      return 'destructive'
+    default:
+      return 'outline'
+  }
+}
+
+function getInjuryBadgeClass(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'out':
+    case 'ir':
+      return 'bg-red-600 text-white'
+    case 'doubtful':
+      return 'border-orange-500 text-orange-400'
+    case 'questionable':
+      return 'border-yellow-500 text-yellow-400'
+    default:
+      return ''
+  }
+}
+
 export function PlayerExplorerPage() {
   const [search, setSearch] = useState('')
   const [position, setPosition] = useState<string>('')
   const [page, setPage] = useState(1)
+  const [showInactive, setShowInactive] = useState(false)
+
+  const { leagueId } = useLeagueContext()
 
   const debouncedSearch = useDebouncedValue(search, 300)
 
   const { data, isLoading, error } = usePlayers({
     search: debouncedSearch || undefined,
     position: position || undefined,
+    active: showInactive ? undefined : true,
     page,
     pageSize: PAGE_SIZE,
   })
+
+  const { data: rosters } = useRosters(leagueId)
+
+  const rosteredPlayerIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (rosters) {
+      for (const roster of rosters) {
+        if (roster.players) {
+          for (const id of roster.players) {
+            ids.add(id)
+          }
+        }
+      }
+    }
+    return ids
+  }, [rosters])
 
   const players = data?.players ?? []
   const totalCount = data?.totalCount ?? 0
@@ -70,6 +116,17 @@ export function PlayerExplorerPage() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant={showInactive ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setShowInactive((prev) => !prev)
+            setPage(1)
+          }}
+          className="self-center"
+        >
+          {showInactive ? 'Showing All' : 'Active Only'}
+        </Button>
       </div>
 
       <Card>
@@ -98,17 +155,22 @@ export function PlayerExplorerPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Rank</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Position</TableHead>
                     <TableHead>Team</TableHead>
                     <TableHead>Age</TableHead>
+                    <TableHead>Exp</TableHead>
+                    <TableHead>Depth</TableHead>
+                    <TableHead>Injury</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Roster</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {players.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center">
+                      <TableCell colSpan={10} className="py-8 text-center">
                         <div className="flex flex-col items-center gap-2 text-gray-400">
                           <Users className="h-8 w-8" />
                           <p>No players found</p>
@@ -119,16 +181,47 @@ export function PlayerExplorerPage() {
                   ) : (
                     players.map((player) => (
                       <TableRow key={player.player_id}>
+                        <TableCell className="text-muted-foreground">{player.search_rank ?? '-'}</TableCell>
                         <TableCell className="font-medium">{player.full_name ?? `${player.first_name} ${player.last_name}`}</TableCell>
                         <TableCell>
                           <Badge variant="secondary">{player.position ?? 'N/A'}</Badge>
                         </TableCell>
-                        <TableCell>{player.team ?? '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <TeamLogo team={player.team} size="sm" />
+                            <span>{player.team ?? '-'}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>{player.age ?? '-'}</TableCell>
+                        <TableCell>{player.years_exp != null ? `${player.years_exp}y` : '-'}</TableCell>
+                        <TableCell>
+                          {player.depth_chart_position
+                            ? `${player.depth_chart_position}${player.depth_chart_order != null ? ` #${player.depth_chart_order}` : ''}`
+                            : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {player.injury_status ? (
+                            <Badge
+                              variant={getInjuryBadgeVariant(player.injury_status)}
+                              className={getInjuryBadgeClass(player.injury_status)}
+                            >
+                              {player.injury_status}
+                            </Badge>
+                          ) : null}
+                        </TableCell>
                         <TableCell>
                           <Badge variant={player.status === 'Active' ? 'win' : 'outline'}>
                             {player.status ?? 'Unknown'}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {leagueId ? (
+                            <Badge variant={rosteredPlayerIds.has(player.player_id) ? 'secondary' : 'outline'}>
+                              {rosteredPlayerIds.has(player.player_id) ? 'Rostered' : 'Available'}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
