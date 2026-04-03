@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Clipboard, Plus, Minus, ArrowRightLeft, Users } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Clipboard, Plus, Minus, ArrowRightLeft, Users, X, Eye } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,6 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   useRosters,
   useOwners,
@@ -38,6 +45,8 @@ interface TeamPickInfo {
 
 type StrengthTier = 'Strong' | 'Average' | 'Rebuilding'
 
+type SortOption = 'default' | 'faab' | 'strength' | 'capital' | 'roster-size'
+
 // --- Constants ---
 
 const TYPE_LABELS: Record<string, string> = {
@@ -60,6 +69,20 @@ const TIER_STYLES: Record<StrengthTier, string> = {
   Rebuilding: 'bg-loss/10 text-loss border-loss/30',
 }
 
+const TIER_ORDER: Record<StrengthTier, number> = {
+  Strong: 0,
+  Average: 1,
+  Rebuilding: 2,
+}
+
+const SORT_LABELS: Record<SortOption, string> = {
+  default: 'Default',
+  faab: 'FAAB Spent',
+  strength: 'Strength Tier',
+  capital: 'Draft Capital',
+  'roster-size': 'Roster Size',
+}
+
 // --- Helper functions ---
 
 function getWaiverBudget(settings: Record<string, unknown>): number | null {
@@ -70,6 +93,7 @@ function getWaiverBudget(settings: Record<string, unknown>): number | null {
 
 function computeStrengthTier(fpts: number, allFpts: number[]): StrengthTier {
   if (allFpts.length === 0) return 'Average'
+  if (Math.max(...allFpts) === Math.min(...allFpts)) return 'Average'
   const sorted = [...allFpts].sort((a, b) => b - a)
   const topThreshold = sorted[Math.floor(sorted.length / 3)] ?? 0
   const bottomThreshold = sorted[Math.floor((sorted.length * 2) / 3)] ?? 0
@@ -273,12 +297,47 @@ interface TeamCardProps {
   strengthTier: StrengthTier
   pickInfo: TeamPickInfo
   getName: (owner: { display_name: string; team_name?: string | null }) => string
+  playerMap: Map<string, string> | undefined
+  rosterToName: Map<number, string>
+  seasonTradedPicks: { round: number; roster_id: number; owner_id: number; previous_owner_id: number }[]
+  totalRounds: number
 }
 
-function TeamCard({ roster, owner, strengthTier, pickInfo, getName }: TeamCardProps) {
+function TeamCard({ roster, owner, strengthTier, pickInfo, getName, playerMap, rosterToName, seasonTradedPicks, totalRounds }: TeamCardProps) {
+  const [showPicks, setShowPicks] = useState(false)
+  const [showPlayers, setShowPlayers] = useState(false)
   const displayName = owner ? getName(owner) : `Roster ${roster.roster_id}`
   const rosterSize = roster.players?.length ?? 0
   const budgetUsed = getWaiverBudget(roster.settings)
+
+  const pickDetails = useMemo(() => {
+    const allRounds = new Set<number>()
+    for (let r = 1; r <= totalRounds; r++) allRounds.add(r)
+    for (const r of pickInfo.picksByRound.keys()) allRounds.add(r)
+    const sorted = [...allRounds].sort((a, b) => a - b)
+    return sorted.map((r) => {
+      const status = pickInfo.picksByRound.get(r)
+      if (status === 'own') {
+        return { round: r, label: 'Own pick', type: 'own' as const }
+      }
+      if (status === 'acquired') {
+        const trade = seasonTradedPicks.find(
+          (p) => p.owner_id === roster.roster_id && p.round === r && p.roster_id !== roster.roster_id,
+        )
+        const fromName = trade
+          ? (rosterToName.get(trade.roster_id) ?? `Roster ${trade.roster_id}`)
+          : 'Unknown'
+        return { round: r, label: `Acquired from ${fromName}`, type: 'acquired' as const }
+      }
+      const trade = seasonTradedPicks.find(
+        (p) => p.roster_id === roster.roster_id && p.round === r && p.owner_id !== roster.roster_id,
+      )
+      const toName = trade
+        ? (rosterToName.get(trade.owner_id) ?? `Roster ${trade.owner_id}`)
+        : 'Unknown'
+      return { round: r, label: `Traded to ${toName}`, type: 'traded' as const }
+    })
+  }, [pickInfo, roster.roster_id, seasonTradedPicks, rosterToName, totalRounds])
 
   return (
     <Card className="transition-colors hover:border-gray-600/70">
@@ -306,15 +365,62 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName }: TeamCardPr
               {budgetUsed !== null ? `$${budgetUsed}` : 'N/A'}
             </p>
           </div>
-          <div className="rounded-lg bg-bg-primary/50 p-2.5 text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Draft Picks</p>
-            <p className="text-sm font-bold text-gray-100">{pickInfo.totalPicks}</p>
-            {(pickInfo.tradedAway > 0 || pickInfo.acquired > 0) && (
-              <p className="text-[10px] text-gray-500">
-                {pickInfo.tradedAway > 0 && <span className="text-loss">-{pickInfo.tradedAway}</span>}
-                {pickInfo.tradedAway > 0 && pickInfo.acquired > 0 && ' / '}
-                {pickInfo.acquired > 0 && <span className="text-win">+{pickInfo.acquired}</span>}
-              </p>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowPicks((v) => !v)}
+              className="w-full rounded-lg bg-bg-primary/50 p-2.5 text-center transition-colors hover:bg-bg-primary/70"
+            >
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Draft Picks</p>
+              <p className="text-sm font-bold text-gray-100">{pickInfo.totalPicks}</p>
+              {(pickInfo.tradedAway > 0 || pickInfo.acquired > 0) && (
+                <p className="text-[10px] text-gray-500">
+                  {pickInfo.tradedAway > 0 && <span className="text-loss">-{pickInfo.tradedAway}</span>}
+                  {pickInfo.tradedAway > 0 && pickInfo.acquired > 0 && ' / '}
+                  {pickInfo.acquired > 0 && <span className="text-win">+{pickInfo.acquired}</span>}
+                </p>
+              )}
+            </button>
+            {showPicks && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowPicks(false)} />
+                <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-gray-700/50 bg-bg-secondary p-3 shadow-xl">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-300">
+                      Draft Picks ({pickInfo.totalPicks} total)
+                    </p>
+                    <button type="button" onClick={() => setShowPicks(false)}>
+                      <X className="h-3.5 w-3.5 text-gray-500 hover:text-gray-300" />
+                    </button>
+                  </div>
+                  <div className="mb-2 h-px bg-gray-700/50" />
+                  <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                    {pickDetails.map((pick) => (
+                      <div key={pick.round} className="flex items-center gap-2 text-xs">
+                        <span
+                          className={cn(
+                            'inline-block h-2 w-2 shrink-0 rounded-full',
+                            pick.type === 'own' && 'bg-accent/60',
+                            pick.type === 'acquired' && 'bg-win/60',
+                            pick.type === 'traded' && 'bg-gray-700/40',
+                          )}
+                        />
+                        <span className="text-gray-400">Round {pick.round}</span>
+                        <span className="text-gray-500">—</span>
+                        <span
+                          className={cn(
+                            pick.type === 'own' && 'text-gray-300',
+                            pick.type === 'acquired' && 'text-win',
+                            pick.type === 'traded' && 'text-loss',
+                          )}
+                        >
+                          {pick.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
           </div>
           <div className="rounded-lg bg-bg-primary/50 p-2.5 text-center">
@@ -328,12 +434,53 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName }: TeamCardPr
               {strengthTier}
             </Badge>
           </div>
-          <div className="rounded-lg bg-bg-primary/50 p-2.5 text-center">
+          <button
+            type="button"
+            onClick={() => setShowPlayers(true)}
+            className="rounded-lg bg-bg-primary/50 p-2.5 text-center transition-colors hover:bg-bg-primary/70"
+          >
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Roster Size</p>
             <p className="text-sm font-bold text-gray-100">{rosterSize}</p>
-          </div>
+            <p className="mt-0.5 flex items-center justify-center gap-1 text-[10px] text-accent">
+              <Eye className="h-3 w-3" /> View
+            </p>
+          </button>
         </div>
       </CardContent>
+      {showPlayers && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setShowPlayers(false)}
+        >
+          <div
+            className="mx-4 max-h-[80vh] w-full max-w-md overflow-y-auto rounded-lg border border-gray-700/50 bg-bg-secondary p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <p className="font-semibold text-gray-100">{displayName} — Roster</p>
+              <button type="button" onClick={() => setShowPlayers(false)}>
+                <X className="h-4 w-4 text-gray-500 hover:text-gray-300" />
+              </button>
+            </div>
+            {rosterSize > 0 ? (
+              <div
+                className={cn(
+                  'grid gap-x-4 gap-y-1',
+                  rosterSize >= 20 ? 'grid-cols-3' : 'grid-cols-2',
+                )}
+              >
+                {(roster.players ?? []).map((playerId) => (
+                  <p key={playerId} className="truncate text-xs text-gray-300">
+                    {playerMap?.get(playerId) ?? playerId}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-gray-500">No players on roster</p>
+            )}
+          </div>
+        </div>
+      )}
     </Card>
   )
 }
@@ -431,6 +578,7 @@ export function PreDraftPage() {
   const { data: tradedPicks = [], isLoading: picksLoading } = useTradedPicks(leagueId)
   const { data: playerMap } = usePlayerMap()
   const { getName } = useDisplayName()
+  const [sortBy, setSortBy] = useState<SortOption>('default')
 
   const currentLeague = useMemo(
     () => leagues.find((l) => l.league_id === leagueId),
@@ -461,19 +609,23 @@ export function PreDraftPage() {
     [transactions],
   )
 
+  // Filter traded picks to the relevant season
+  const seasonTradedPicks = useMemo(
+    () => tradedPicks.filter((p) => p.season === season),
+    [tradedPicks, season],
+  )
+
   // Compute team picks for each roster
   const teamPicks = useMemo(() => {
     const map = new Map<number, TeamPickInfo>()
-    // Filter traded picks to the relevant season
-    const relevantPicks = tradedPicks.filter((p) => p.season === season)
     for (const roster of rosters) {
       map.set(
         roster.roster_id,
-        computeTeamPicks(roster.roster_id, totalRosters, relevantPicks),
+        computeTeamPicks(roster.roster_id, totalRosters, seasonTradedPicks),
       )
     }
     return map
-  }, [rosters, tradedPicks, totalRosters, season])
+  }, [rosters, seasonTradedPicks, totalRosters])
 
   // Compute strength tiers
   const allFpts = useMemo(() => rosters.map((r) => r.fpts), [rosters])
@@ -485,6 +637,30 @@ export function PreDraftPage() {
     }
     return map
   }, [rosters, allFpts])
+
+  const sortedRosters = useMemo(() => {
+    const list = [...rosters]
+    switch (sortBy) {
+      case 'faab':
+        return list.sort((a, b) => (getWaiverBudget(b.settings) ?? 0) - (getWaiverBudget(a.settings) ?? 0))
+      case 'strength':
+        return list.sort(
+          (a, b) =>
+            (TIER_ORDER[strengthTiers.get(a.roster_id) ?? 'Average'] ?? 1) -
+            (TIER_ORDER[strengthTiers.get(b.roster_id) ?? 'Average'] ?? 1),
+        )
+      case 'capital':
+        return list.sort(
+          (a, b) =>
+            (teamPicks.get(b.roster_id)?.totalPicks ?? 0) -
+            (teamPicks.get(a.roster_id)?.totalPicks ?? 0),
+        )
+      case 'roster-size':
+        return list.sort((a, b) => (b.players?.length ?? 0) - (a.players?.length ?? 0))
+      default:
+        return list.sort((a, b) => a.roster_id - b.roster_id)
+    }
+  }, [rosters, sortBy, strengthTiers, teamPicks])
 
   const isLoading = rostersLoading || ownersLoading || txLoading || picksLoading
 
@@ -544,9 +720,26 @@ export function PreDraftPage() {
         <StatusBadge status={leagueStatus} />
       </div>
 
+      {/* Sort Control */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-gray-400">Sort by:</span>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+          <SelectTrigger className="h-8 w-40 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(SORT_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value} className="text-xs">
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Team Cards Gallery — full width responsive grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {rosters.map((roster) => {
+        {sortedRosters.map((roster) => {
           const owner = roster.owner_id ? ownerMap.get(roster.owner_id) : undefined
           return (
             <TeamCard
@@ -563,6 +756,10 @@ export function PreDraftPage() {
                 picksByRound: new Map(),
               }}
               getName={getName}
+              playerMap={playerMap}
+              rosterToName={rosterToName}
+              seasonTradedPicks={seasonTradedPicks}
+              totalRounds={totalRosters}
             />
           )
         })}
