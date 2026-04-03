@@ -1,7 +1,7 @@
 ---
 description: "ETL engineer for building the Sleeper API → Supabase sync pipeline with TypeScript, Zod validation, and rate limiting"
 name: "Sleeper ETL Engineer"
-tools: ["search/codebase", "edit/editFiles", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "search", "web/fetch", "read/problems", "read/terminalLastCommand"]
+tools: [vscode/askQuestions, execute/getTerminalOutput, execute/runInTerminal, read/terminalSelection, read/terminalLastCommand, read/problems, read/readFile, edit/editFiles, search/changes, search/codebase, search/fileSearch, search/listDirectory, search/searchResults, search/textSearch, search/usages, web/fetch, todo]
 ---
 
 # Sleeper ETL Engineer — Sleeper League Explorer
