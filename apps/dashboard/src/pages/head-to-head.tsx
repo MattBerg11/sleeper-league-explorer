@@ -1,4 +1,16 @@
 ﻿import { useState, useMemo } from 'react'
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -67,6 +79,28 @@ export function HeadToHeadPage() {
 
   const team1Info = standings.find((s) => s.roster_id === team1Id)
   const team2Info = standings.find((s) => s.roster_id === team2Id)
+
+  const comparisonData = useMemo(() => {
+    if (team1Id == null || team2Id == null || allMatchups.length === 0) return []
+    const weekMap = new Map<number, { week: number; team1: number | null; team2: number | null }>()
+
+    for (const m of allMatchups) {
+      if (m.team1_roster_id === team1Id || m.team2_roster_id === team1Id) {
+        const score = m.team1_roster_id === team1Id ? m.team1_points : m.team2_points
+        const entry = weekMap.get(m.week) ?? { week: m.week, team1: null, team2: null }
+        entry.team1 = score
+        weekMap.set(m.week, entry)
+      }
+      if (m.team1_roster_id === team2Id || m.team2_roster_id === team2Id) {
+        const score = m.team1_roster_id === team2Id ? m.team1_points : m.team2_points
+        const entry = weekMap.get(m.week) ?? { week: m.week, team1: null, team2: null }
+        entry.team2 = score
+        weekMap.set(m.week, entry)
+      }
+    }
+
+    return [...weekMap.values()].sort((a, b) => a.week - b.week)
+  }, [allMatchups, team1Id, team2Id])
 
   function handleTeamSelect(rosterId: number) {
     if (team1Id === rosterId) {
@@ -151,7 +185,7 @@ export function HeadToHeadPage() {
               onClick={() => handleTeamSelect(s.roster_id)}
               title={getTeamName(s)}
               className={cn(
-                'rounded-full p-0.5 transition-colors',
+                'rounded-lg p-0.5 transition-colors',
                 team1Id === s.roster_id
                   ? 'ring-2 ring-accent bg-accent/10'
                   : team2Id === s.roster_id
@@ -222,7 +256,7 @@ export function HeadToHeadPage() {
                 <p className="py-4 text-center text-gray-400">
                   {selectedWeek != null
                     ? `No matchup between these teams in Week ${selectedWeek}`
-                    : 'No matchups found between these teams'}
+                    : "These teams haven't played each other yet this season"}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -266,6 +300,79 @@ export function HeadToHeadPage() {
               )}
             </CardContent>
           </Card>
+
+          {comparisonData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Scoring Comparison</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-8">
+                  {/* Line Chart */}
+                  <div>
+                    <p className="mb-2 text-sm font-medium text-gray-400">Trend</p>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={comparisonData}>
+                        <CartesianGrid stroke="var(--color-chart-grid)" strokeDasharray="3 3" />
+                        <XAxis dataKey="week" stroke="var(--color-chart-axis)" />
+                        <YAxis stroke="var(--color-chart-axis)" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'var(--color-chart-tooltip-bg)',
+                            border: '1px solid var(--color-chart-tooltip-border)',
+                            borderRadius: '0.5rem',
+                            color: 'var(--color-chart-tooltip-text)',
+                          }}
+                        />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="team1"
+                          name={team1Info ? getTeamName(team1Info) : 'Team 1'}
+                          stroke="#60a5fa"
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          connectNulls
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="team2"
+                          name={team2Info ? getTeamName(team2Info) : 'Team 2'}
+                          stroke="#f87171"
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          connectNulls
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Bar Chart */}
+                  <div>
+                    <p className="mb-2 text-sm font-medium text-gray-400">Week by Week</p>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={comparisonData}>
+                        <CartesianGrid stroke="var(--color-chart-grid)" strokeDasharray="3 3" />
+                        <XAxis dataKey="week" stroke="var(--color-chart-axis)" />
+                        <YAxis stroke="var(--color-chart-axis)" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'var(--color-chart-tooltip-bg)',
+                            border: '1px solid var(--color-chart-tooltip-border)',
+                            borderRadius: '0.5rem',
+                            color: 'var(--color-chart-tooltip-text)',
+                          }}
+                        />
+                        <Legend />
+                        <Bar dataKey="team1" name={team1Info ? getTeamName(team1Info) : 'Team 1'} fill="#60a5fa" />
+                        <Bar dataKey="team2" name={team2Info ? getTeamName(team2Info) : 'Team 2'} fill="#f87171" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
 
