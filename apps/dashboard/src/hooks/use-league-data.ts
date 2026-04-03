@@ -260,14 +260,25 @@ export function usePlayerMap() {
     queryKey: ['player-map'],
     queryFn: async () => {
       if (!supabase) return new Map<string, string>()
-      const { data, error } = await supabase
-        .from('player_names')
-        .select('player_id, name')
-      if (error) throw error
       const map = new Map<string, string>()
-      for (const p of (data ?? []) as { player_id: string; name: string }[]) {
-        map.set(p.player_id, p.name)
+      const PAGE_SIZE = 5000
+      let from = 0
+      let hasMore = true
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('player_names')
+          .select('player_id, name')
+          .range(from, from + PAGE_SIZE - 1)
+        if (error) throw error
+        const rows = (data ?? []) as { player_id: string; name: string }[]
+        for (const p of rows) {
+          if (p.name) map.set(p.player_id, p.name)
+        }
+        hasMore = rows.length === PAGE_SIZE
+        from += PAGE_SIZE
       }
+
       return map
     },
     staleTime: 30 * 60 * 1000,
