@@ -105,6 +105,7 @@ export function useAllMatchupPairs(leagueId: string) {
 interface PlayerFilterOptions {
   search?: string
   position?: string
+  active?: boolean
   page?: number
   pageSize?: number
 }
@@ -115,12 +116,12 @@ interface PlayersResult {
 }
 
 export function usePlayers(options: PlayerFilterOptions = {}) {
-  const { search, position, page = 1, pageSize = 50 } = options
+  const { search, position, active, page = 1, pageSize = 50 } = options
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
   return useQuery<PlayersResult>({
-    queryKey: ['players', search, position, page, pageSize],
+    queryKey: ['players', search, position, active, page, pageSize],
     queryFn: async () => {
       if (!supabase) return { players: [], totalCount: 0 }
       let query = supabase
@@ -134,6 +135,9 @@ export function usePlayers(options: PlayerFilterOptions = {}) {
       }
       if (position) {
         query = query.eq('position', position)
+      }
+      if (active !== undefined) {
+        query = query.eq('active', active)
       }
       const { data, error, count } = await query
       if (error) throw error
