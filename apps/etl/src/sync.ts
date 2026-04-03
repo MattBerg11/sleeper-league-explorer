@@ -29,8 +29,8 @@ import {
  *  leagues              every 6h            Full upsert (settings can change)
  *  owners               every 6h            Full upsert (team names can change)
  *  rosters              every 6h            Full upsert (roster moves happen constantly)
- *  matchups             every 6h            Current week + previous week only
- *  transactions         every 6h            Current round + previous round only
+ *  matchups             every 6h            All weeks 1 through current week
+ *  transactions         every 6h            All rounds 1 through current week
  *  drafts               every 6h            Skip if already complete in DB
  *  draft_picks          every 6h            Skip if parent draft already complete in DB
  *  traded_picks         every 6h            Full upsert (trades can happen anytime)
@@ -45,7 +45,7 @@ import {
  *  - leagues-only: Incremental league data sync (cron every 6h)
  *                  Syncs nfl_state first, then active leagues only.
  *                  Skips completed historical leagues (status === "complete").
- *                  Matchups/transactions limited to current + previous week.
+ *                  Matchups/transactions sync all weeks 1 through current week.
  *                  Drafts skipped if already complete in DB.
  *  - initiate:     One-time sync for NEW leagues not yet in DB.
  *                  Runs full historical sync (all weeks) for new leagues only.
@@ -339,7 +339,7 @@ async function syncMatchups(
   }
 }
 
-/** Sync matchups for current week + previous week only (incremental). */
+/** Sync matchups for all weeks 1 through currentWeek (incremental with backfill). */
 async function syncMatchupsIncremental(
   client: SleeperClient,
   supabase: SupabaseClient,
@@ -347,11 +347,11 @@ async function syncMatchupsIncremental(
   currentWeek: number,
 ): Promise<SyncEntityResult> {
   try {
-    const weeks = currentWeek > 1 ? [currentWeek - 1, currentWeek] : [1]
-    console.log(`Syncing matchups (incremental, weeks: ${weeks.join(', ')})...`)
+    const maxWeek = Math.min(currentWeek, MAX_REGULAR_SEASON_WEEKS)
+    console.log(`Syncing matchups (weeks 1-${maxWeek})...`)
     let totalCount = 0
     for (const league of leagues) {
-      for (const week of weeks) {
+      for (let week = 1; week <= maxWeek; week++) {
         const matchups = await client.getLeagueMatchups(league.league_id, week)
         if (matchups.length === 0) continue
         const rows = matchups.map((m) => transformMatchup(m, league.league_id, week))
@@ -359,7 +359,7 @@ async function syncMatchupsIncremental(
         totalCount += rows.length
       }
     }
-    console.log(`Synced ${totalCount.toLocaleString()} matchup rows (incremental)`)
+    console.log(`Synced ${totalCount.toLocaleString()} matchup rows`)
     return { entity: 'matchups', success: true, count: totalCount }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -395,7 +395,7 @@ async function syncTransactions(
   }
 }
 
-/** Sync transactions for current round + previous round only (incremental). */
+/** Sync transactions for all rounds 1 through currentWeek (incremental with backfill). */
 async function syncTransactionsIncremental(
   client: SleeperClient,
   supabase: SupabaseClient,
@@ -403,11 +403,11 @@ async function syncTransactionsIncremental(
   currentWeek: number,
 ): Promise<SyncEntityResult> {
   try {
-    const rounds = currentWeek > 1 ? [currentWeek - 1, currentWeek] : [1]
-    console.log(`Syncing transactions (incremental, rounds: ${rounds.join(', ')})...`)
+    const maxRound = Math.min(currentWeek, MAX_ROUNDS)
+    console.log(`Syncing transactions (rounds 1-${maxRound})...`)
     let totalCount = 0
     for (const league of leagues) {
-      for (const round of rounds) {
+      for (let round = 1; round <= maxRound; round++) {
         const transactions = await client.getLeagueTransactions(league.league_id, round)
         if (transactions.length === 0) continue
         const rows = transactions.map((t) => transformTransaction(t, league.league_id))
@@ -415,7 +415,7 @@ async function syncTransactionsIncremental(
         totalCount += rows.length
       }
     }
-    console.log(`Synced ${totalCount.toLocaleString()} transactions (incremental)`)
+    console.log(`Synced ${totalCount.toLocaleString()} transactions`)
     return { entity: 'transactions', success: true, count: totalCount }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -674,25 +674,37 @@ export async function runSync(options: SyncOptions): Promise<SyncResult> {
     const nflStateResult = await syncNFLState(client, supabase)
     results.push(nflStateResult)
 
-    // Sync leagues + owners + rosters (metadata that can change frequently)
-    const { result: leaguesResult, leagues } = await syncLeagues(client, supabase, leagueIds)
-    results.push(leaguesResult)
+    // Resolve the full league chain
+    console.log('Resolving league chains...')
+    const allLeagues = await resolveLeagueChain(client, leagueIds)
+    if (allLeagues.length === 0) {
+      console.warn('No leagues found from provided IDs.')
+      results.push({ entity: 'leagues', success: true, count: 0 })
+      return { results }
+    }
 
-    if (leaguesResult.success && leagues.length > 0) {
-      // Only sync owners/rosters for active (non-complete) leagues
-      const activeLeagues = leagues.filter((l) => l.status !== 'complete')
-      const skippedCount = leagues.length - activeLeagues.length
-      if (skippedCount > 0) {
-        console.log(`Skipping ${skippedCount} completed league(s) for owners/rosters sync`)
-      }
+    // Only upsert active (non-complete) leagues to avoid overwriting historical data
+    const activeLeagues = allLeagues.filter((l) => l.status !== 'complete')
+    const skippedCount = allLeagues.length - activeLeagues.length
+    if (skippedCount > 0) {
+      console.log(`Skipping ${skippedCount} completed historical league(s)`)
+    }
 
-      if (activeLeagues.length > 0) {
-        const ownersResult = await syncOwners(client, supabase, activeLeagues)
-        results.push(ownersResult)
+    if (activeLeagues.length > 0) {
+      const leagueRows = activeLeagues.map(transformLeague)
+      await upsertBatch(supabase, 'leagues', leagueRows, 'league_id')
+      console.log(`Synced ${activeLeagues.length} active league(s)`)
+      results.push({ entity: 'leagues', success: true, count: activeLeagues.length })
 
-        const rostersResult = await syncRosters(client, supabase, activeLeagues)
-        results.push(rostersResult)
-      }
+      // Sync owners + rosters for active leagues only
+      const ownersResult = await syncOwners(client, supabase, activeLeagues)
+      results.push(ownersResult)
+
+      const rostersResult = await syncRosters(client, supabase, activeLeagues)
+      results.push(rostersResult)
+    } else {
+      console.log('All leagues are completed. Nothing to sync.')
+      results.push({ entity: 'leagues', success: true, count: 0 })
     }
 
     return { results }
