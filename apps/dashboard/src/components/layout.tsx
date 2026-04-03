@@ -95,32 +95,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <div className="border-b border-gray-700/50 px-4 py-3">
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">League</label>
-          <Select value={leagueName} onValueChange={setLeagueName}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select league…" />
-            </SelectTrigger>
-            <SelectContent>
-              {leagueFamilies.map((family) => (
-                <SelectItem key={family.name} value={family.name}>
-                  {family.name}
-                </SelectItem>
-              ))}
-              {leagueFamilies.length === 0 && (
-                <SelectItem value={leagueName}>Loading…</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
         <div className="border-b border-gray-700/50 px-4 py-2">
-          <div className="flex w-full rounded-full bg-gray-800/60 p-0.5">
+          <div className="flex w-full rounded-lg bg-gray-800/60 p-0.5">
             <button
               type="button"
               onClick={() => setMode('team')}
               className={cn(
-                'flex-1 rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                'flex-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors',
                 mode === 'team'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-gray-400 hover:text-gray-200',
@@ -132,7 +113,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => setMode('user')}
               className={cn(
-                'flex-1 rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                'flex-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors',
                 mode === 'user'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-gray-400 hover:text-gray-200',
@@ -192,22 +173,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Button>
 
           <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">
-            <Select value={leagueName} onValueChange={setLeagueName}>
-              <SelectTrigger className="h-auto w-auto gap-1 border-0 bg-transparent px-0 py-0 text-base font-semibold text-gray-100 ring-offset-0 focus:ring-0 focus:ring-offset-0 lg:text-lg [&>span]:line-clamp-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {leagueFamilies.map((family) => (
-                  <SelectItem key={family.name} value={family.name}>
-                    {family.name}
-                  </SelectItem>
-                ))}
-                {leagueFamilies.length === 0 && (
-                  <SelectItem value={leagueName}>Loading…</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
             <div className="flex items-center gap-2">
+              <Select value={leagueName} onValueChange={setLeagueName}>
+                <SelectTrigger className="h-auto w-auto gap-1 border-0 bg-transparent px-0 py-0 text-base font-semibold text-gray-100 ring-offset-0 focus:ring-0 focus:ring-offset-0 lg:text-lg [&>span]:line-clamp-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {leagueFamilies.map((family) => (
+                    <SelectItem key={family.name} value={family.name}>
+                      {family.name}
+                    </SelectItem>
+                  ))}
+                  {leagueFamilies.length === 0 && (
+                    <SelectItem value={leagueName}>Loading…</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
               {(() => {
                 const currentIndex = availableSeasons.indexOf(season)
                 const isOldest = currentIndex >= availableSeasons.length - 1
@@ -240,8 +221,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </div>
                 )
               })()}
-              <ThemeToggle />
             </div>
+            <ThemeToggle />
           </div>
         </header>
 
