@@ -261,7 +261,7 @@ export function usePlayerMap() {
     queryFn: async () => {
       if (!supabase) return new Map<string, string>()
       const map = new Map<string, string>()
-      const PAGE_SIZE = 5000
+      const PAGE_SIZE = 1000
       let from = 0
       let hasMore = true
 
@@ -269,6 +269,7 @@ export function usePlayerMap() {
         const { data, error } = await supabase
           .from('player_names')
           .select('player_id, name')
+          .order('player_id')
           .range(from, from + PAGE_SIZE - 1)
         if (error) throw error
         const rows = (data ?? []) as { player_id: string; name: string }[]
