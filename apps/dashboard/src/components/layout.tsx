@@ -47,6 +47,7 @@ const navGroups = [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const { leagueName, setLeagueName, season, setSeason, leagueFamilies, availableSeasons } = useLeagueContext()
   const { mode, setMode } = useDisplayName()
   const matchRoute = useMatchRoute()
@@ -69,67 +70,78 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-gray-700/50 bg-bg-secondary transition-transform lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col border-r border-gray-700/50 bg-bg-secondary transition-all lg:static lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          collapsed ? 'w-16' : 'w-64',
         )}
       >
-        <div className="flex flex-col border-b border-gray-700/50 px-6 py-3">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-bold text-accent">League Explorer</h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-          {lastSynced && (
-            <span
-              className="mt-1 text-[10px] text-gray-500"
-              title={new Date(lastSynced).toLocaleString()}
-            >
-              Synced {formatRelativeTime(new Date(lastSynced).getTime())}
-            </span>
+        <div className={cn('flex flex-col border-b border-gray-700/50 px-6 py-3', collapsed && 'items-center px-2')}>
+          {!collapsed ? (
+            <>
+              <div className="flex items-center justify-between">
+                <h1 className="text-lg font-bold text-accent">League Explorer</h1>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              {lastSynced && (
+                <span
+                  className="mt-1 text-[10px] text-gray-500"
+                  title={new Date(lastSynced).toLocaleString()}
+                >
+                  Synced {formatRelativeTime(new Date(lastSynced).getTime())}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-sm font-bold text-accent">LE</span>
           )}
         </div>
 
-        <div className="border-b border-gray-700/50 px-4 py-2">
-          <div className="flex w-full rounded-lg bg-gray-800/60 p-0.5">
-            <button
-              type="button"
-              onClick={() => setMode('team')}
-              className={cn(
-                'flex-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors',
-                mode === 'team'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200',
-              )}
-            >
-              Teams
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('user')}
-              className={cn(
-                'flex-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors',
-                mode === 'user'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200',
-              )}
-            >
-              Users
-            </button>
+        {!collapsed && (
+          <div className="border-b border-gray-700/50 px-4 py-2">
+            <div className="flex w-full rounded-lg bg-gray-800/60 p-0.5">
+              <button
+                type="button"
+                onClick={() => setMode('team')}
+                className={cn(
+                  'flex-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+                  mode === 'team'
+                    ? 'bg-accent text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200',
+                )}
+              >
+                Teams
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('user')}
+                className={cn(
+                  'flex-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors',
+                  mode === 'user'
+                    ? 'bg-accent text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200',
+                )}
+              >
+                Users
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
-        <nav className="flex-1 space-y-4 p-4">
+        <nav className={cn('flex-1 space-y-4 p-4', collapsed && 'px-2')}>
           {navGroups.map((group) => (
             <div key={group.label}>
-              <span className="mb-1 block px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                {group.label}
-              </span>
+              {!collapsed && (
+                <span className="mb-1 block px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                  {group.label}
+                </span>
+              )}
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const isActive = matchRoute({ to: item.to, fuzzy: item.to !== '/' })
@@ -142,14 +154,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       search={(prev: Record<string, unknown>) => prev}
                       className={cn(
                         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        collapsed && 'justify-center gap-0 px-0',
                         isActive
                           ? 'bg-accent/20 text-accent'
                           : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-100',
                       )}
                       onClick={() => setSidebarOpen(false)}
+                      title={collapsed ? item.label : undefined}
                     >
                       <Icon className="h-4 w-4" />
-                      {item.label}
+                      {!collapsed && item.label}
                     </Link>
                   )
                 })}
@@ -157,6 +171,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           ))}
         </nav>
+
+        <div className="hidden border-t border-gray-700/50 p-2 lg:flex lg:justify-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="h-8 w-8"
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
+        </div>
       </aside>
 
       {/* Main Content */}
