@@ -4,8 +4,10 @@ import type {
   LeagueRow,
   StandingsRow,
   RosterRow,
+  MatchupRow,
   MatchupPairRow,
   PlayerRow,
+  PlayerWeeklyStatsRow,
   TransactionRow,
   DraftRow,
   DraftPickRow,
@@ -267,14 +269,18 @@ export function usePlayerMap() {
 
       while (hasMore) {
         const { data, error } = await supabase
-          .from('player_names')
-          .select('player_id, name')
+          .from('players')
+          .select('player_id, full_name, first_name, last_name')
           .order('player_id')
           .range(from, from + PAGE_SIZE - 1)
-        if (error) throw error
-        const rows = (data ?? []) as { player_id: string; name: string }[]
+        if (error) {
+          console.error('Failed to fetch player names:', error)
+          throw error
+        }
+        const rows = (data ?? []) as { player_id: string; full_name: string | null; first_name: string; last_name: string }[]
         for (const p of rows) {
-          if (p.name) map.set(p.player_id, p.name)
+          const name = p.full_name ?? `${p.first_name} ${p.last_name}`
+          if (name.trim()) map.set(p.player_id, name)
         }
         hasMore = rows.length === PAGE_SIZE
         from += PAGE_SIZE
@@ -347,5 +353,71 @@ export function useNFLState() {
       return data as NFLStateRow
     },
     staleTime: 30 * 60 * 1000, // 30 minutes - NFL state rarely changes
+  })
+}
+
+export function useRawMatchups(leagueId: string, week: number) {
+  return useQuery<MatchupRow[]>({
+    queryKey: ['matchups-raw', leagueId, week],
+    queryFn: async () => {
+      if (!supabase) return []
+      const { data, error } = await supabase
+        .from('matchups')
+        .select('*')
+        .eq('league_id', leagueId)
+        .eq('week', week)
+      if (error) throw error
+      return (data ?? []) as MatchupRow[]
+    },
+    staleTime: STALE_TIME,
+    enabled: !!leagueId && week > 0,
+  })
+}
+
+export function usePlayerWeeklyStats(season: string, week: number | null) {
+  return useQuery<PlayerWeeklyStatsRow[]>({
+    queryKey: ['player-weekly-stats', season, week],
+    queryFn: async () => {
+      if (!supabase || !week) return []
+      const { data, error } = await supabase
+        .from('player_weekly_stats')
+        .select('player_id, season, week, stats')
+        .eq('season', season)
+        .eq('week', week)
+      if (error) throw error
+      return (data ?? []) as PlayerWeeklyStatsRow[]
+    },
+    staleTime: STALE_TIME,
+    enabled: !!season && week != null && week > 0,
+  })
+}
+
+export function usePlayerPositions() {
+  return useQuery<Map<string, string>>({
+    queryKey: ['player-positions'],
+    queryFn: async () => {
+      if (!supabase) return new Map()
+      const map = new Map<string, string>()
+      const PAGE_SIZE = 1000
+      let from = 0
+      let hasMore = true
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('players')
+          .select('player_id, position')
+          .not('position', 'is', null)
+          .order('player_id')
+          .range(from, from + PAGE_SIZE - 1)
+        if (error) throw error
+        const rows = (data ?? []) as { player_id: string; position: string | null }[]
+        for (const p of rows) {
+          if (p.position) map.set(p.player_id, p.position)
+        }
+        hasMore = rows.length === PAGE_SIZE
+        from += PAGE_SIZE
+      }
+      return map
+    },
+    staleTime: 30 * 60 * 1000,
   })
 }
