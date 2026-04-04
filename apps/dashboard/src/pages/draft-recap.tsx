@@ -218,7 +218,7 @@ export function DraftRecapPage() {
                         )}
                       </div>
                     )}
-                    <div className="font-medium">{meta?.first_name?.[0]}. {meta?.last_name ?? playerMap?.get(pick.player_id) ?? pick.player_id}</div>
+                    <div className="font-medium">{meta?.first_name?.[0]}. {meta?.last_name ?? playerMap?.get(pick.player_id) ?? (playerMap ? pick.player_id : 'Loading...')}</div>
                     <div className="flex justify-between text-[10px] opacity-70">
                       <span>{position}</span>
                       <span>{meta?.team ?? ''}</span>
