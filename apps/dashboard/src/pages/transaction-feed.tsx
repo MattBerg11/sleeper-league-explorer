@@ -38,7 +38,8 @@ type GroupBy = 'none' | 'week' | 'team'
 type ViewMode = 'list' | 'grid'
 
 function resolvePlayerName(playerMap: Map<string, string> | undefined, playerId: string): string {
-  return playerMap?.get(playerId) ?? playerId
+  if (!playerMap) return 'Loading...'
+  return playerMap.get(playerId) ?? playerId
 }
 
 interface TradeCardProps {
