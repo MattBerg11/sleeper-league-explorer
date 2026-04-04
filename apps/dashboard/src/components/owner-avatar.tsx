@@ -5,12 +5,13 @@ import { cn } from '@/lib/utils'
 interface OwnerAvatarProps {
   avatarId: string | null | undefined
   name: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   fullSize?: boolean
   className?: string
 }
 
 const SIZES = {
+  xs: 'h-5 w-5 text-[9px]',
   sm: 'h-6 w-6 text-[10px]',
   md: 'h-8 w-8 text-xs',
   lg: 'h-10 w-10 text-sm',
