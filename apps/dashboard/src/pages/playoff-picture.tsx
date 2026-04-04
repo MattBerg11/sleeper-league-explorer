@@ -171,10 +171,11 @@ export function PlayoffPicturePage() {
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-gray-100 sm:text-2xl">Playoff Picture</h2>
 
-      <div className="flex gap-8 overflow-auto pb-4">
+      <div className="overflow-x-auto pb-4">
+        <div className="inline-flex gap-6">
         {rounds.map(({ round, matchups }, roundIndex) => (
-          <div key={round} className="flex items-center gap-4">
-            <div className="min-w-[300px] space-y-4">
+          <div key={round} className="flex items-center gap-2">
+            <div className="w-[260px] shrink-0 space-y-4">
               <h3 className="text-center text-sm font-semibold text-gray-400">
                 {getRoundLabel(round, totalRounds)}
               </h3>
@@ -300,6 +301,7 @@ export function PlayoffPicturePage() {
             )}
           </div>
         ))}
+        </div>
       </div>
     </div>
   )
