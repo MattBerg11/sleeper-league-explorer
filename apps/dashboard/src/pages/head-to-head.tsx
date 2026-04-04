@@ -1,21 +1,29 @@
-﻿import { useState, useMemo } from 'react'
+﻿import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import {
   ResponsiveContainer,
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { OwnerAvatar } from '@/components/owner-avatar'
-import { useStandings, useAllMatchupPairs } from '@/hooks/use-league-data'
+import {
+  useStandings,
+  useAllMatchupPairs,
+  useRawMatchups,
+  usePlayerWeeklyStats,
+  usePlayerPositions,
+} from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { useDisplayName } from '@/hooks/use-display-name'
 import { ErrorAlert } from '@/components/error-alert'
@@ -23,8 +31,112 @@ import { cn } from '@/lib/utils'
 
 const MAX_WEEKS = 18
 
+const POSITION_STATS: Record<string, { key: string; label: string }[]> = {
+  QB: [
+    { key: 'pass_yd', label: 'Pass Yards' },
+    { key: 'pass_td', label: 'Pass TDs' },
+    { key: 'pass_cmp', label: 'Completions' },
+    { key: 'rush_yd', label: 'Rush Yards' },
+    { key: 'pass_int', label: 'INTs' },
+    { key: 'rush_td', label: 'Rush TDs' },
+  ],
+  RB: [
+    { key: 'rush_yd', label: 'Rush Yards' },
+    { key: 'rush_td', label: 'Rush TDs' },
+    { key: 'rec', label: 'Receptions' },
+    { key: 'rec_yd', label: 'Rec Yards' },
+    { key: 'rush_att', label: 'Carries' },
+    { key: 'fum', label: 'Fumbles' },
+  ],
+  WR: [
+    { key: 'rec', label: 'Receptions' },
+    { key: 'rec_yd', label: 'Rec Yards' },
+    { key: 'rec_td', label: 'Rec TDs' },
+    { key: 'rec_tgt', label: 'Targets' },
+    { key: 'rec_yac', label: 'YAC' },
+    { key: 'rush_yd', label: 'Rush Yards' },
+  ],
+  TE: [
+    { key: 'rec', label: 'Receptions' },
+    { key: 'rec_yd', label: 'Rec Yards' },
+    { key: 'rec_td', label: 'Rec TDs' },
+    { key: 'rec_tgt', label: 'Targets' },
+    { key: 'rec_yac', label: 'YAC' },
+    { key: 'rush_yd', label: 'Rush Yards' },
+  ],
+  K: [
+    { key: 'fgm', label: 'FG Made' },
+    { key: 'fga', label: 'FG Att' },
+    { key: 'xpm', label: 'XP Made' },
+    { key: 'xpa', label: 'XP Att' },
+    { key: 'fgm_40_49', label: 'FG 40-49' },
+    { key: 'fgm_50p', label: 'FG 50+' },
+  ],
+  DEF: [
+    { key: 'sack', label: 'Sacks' },
+    { key: 'int', label: 'INTs' },
+    { key: 'ff', label: 'Forced Fum' },
+    { key: 'fum_rec', label: 'Fum Rec' },
+    { key: 'def_td', label: 'Def TDs' },
+    { key: 'safe', label: 'Safeties' },
+  ],
+}
+
+function PositionSpiderChart({
+  position,
+  team1Stats,
+  team2Stats,
+  team1Name,
+  team2Name,
+}: {
+  position: string
+  team1Stats: Record<string, number>
+  team2Stats: Record<string, number>
+  team1Name: string
+  team2Name: string
+}) {
+  const statConfig = POSITION_STATS[position]
+  if (!statConfig) return null
+
+  const data = statConfig.map(({ key, label }) => ({
+    stat: label,
+    team1: team1Stats[key] ?? 0,
+    team2: team2Stats[key] ?? 0,
+  }))
+
+  const hasData = data.some((d) => d.team1 > 0 || d.team2 > 0)
+  if (!hasData) return null
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">{position}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={250}>
+          <RadarChart data={data}>
+            <PolarGrid stroke="var(--color-chart-grid)" />
+            <PolarAngleAxis dataKey="stat" tick={{ fill: 'var(--color-chart-axis)', fontSize: 10 }} />
+            <PolarRadiusAxis tick={{ fill: 'var(--color-chart-axis)', fontSize: 9 }} />
+            <Radar name={team1Name} dataKey="team1" stroke="#60a5fa" fill="#60a5fa" fillOpacity={0.25} />
+            <Radar name={team2Name} dataKey="team2" stroke="#f87171" fill="#f87171" fillOpacity={0.25} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'var(--color-chart-tooltip-bg)',
+                border: '1px solid var(--color-chart-tooltip-border)',
+                borderRadius: '0.5rem',
+                color: 'var(--color-chart-tooltip-text)',
+              }}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function HeadToHeadPage() {
-  const { leagueId } = useLeagueContext()
+  const { leagueId, season } = useLeagueContext()
   const { getName } = useDisplayName()
   const { data: standings = [], isLoading: standingsLoading, error } = useStandings(leagueId)
   const { data: allMatchups = [], isLoading: matchupsLoading } = useAllMatchupPairs(leagueId)
@@ -32,6 +144,35 @@ export function HeadToHeadPage() {
   const [team1Id, setTeam1Id] = useState<number | null>(null)
   const [team2Id, setTeam2Id] = useState<number | null>(null)
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null) // null = "All"
+
+  // Spider chart data hooks
+  const { data: weekMatchups = [] } = useRawMatchups(leagueId, selectedWeek ?? 0)
+  const { data: weeklyStats, isLoading: weeklyStatsLoading } = usePlayerWeeklyStats(
+    season,
+    selectedWeek,
+  )
+  const { data: positionMap } = usePlayerPositions()
+
+  // Toggle group sliding indicator
+  const toggleRef = useRef<HTMLDivElement>(null)
+  const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number } | null>(null)
+
+  const updateIndicator = useCallback(() => {
+    if (!toggleRef.current) return
+    const idx = selectedWeek === null ? 0 : selectedWeek
+    const buttons = toggleRef.current.querySelectorAll('button')
+    const button = buttons[idx]
+    if (button) {
+      setIndicatorStyle({
+        left: button.offsetLeft,
+        width: button.offsetWidth,
+      })
+    }
+  }, [selectedWeek])
+
+  useEffect(() => {
+    updateIndicator()
+  }, [updateIndicator])
 
   const isLoading = standingsLoading || matchupsLoading
 
@@ -102,6 +243,44 @@ export function HeadToHeadPage() {
     return [...weekMap.values()].sort((a, b) => a.week - b.week)
   }, [allMatchups, team1Id, team2Id])
 
+  const { team1PosSummary, team2PosSummary } = useMemo(() => {
+    const empty = {
+      team1PosSummary: {} as Record<string, Record<string, number>>,
+      team2PosSummary: {} as Record<string, Record<string, number>>,
+    }
+    if (!weeklyStats?.length || !positionMap || !weekMatchups?.length) return empty
+    if (team1Id == null || team2Id == null) return empty
+
+    const team1Matchup = weekMatchups.find((m) => m.roster_id === team1Id)
+    const team2Matchup = weekMatchups.find((m) => m.roster_id === team2Id)
+    if (!team1Matchup?.players || !team2Matchup?.players) return empty
+
+    const statsMap = new Map<string, Record<string, number>>()
+    for (const row of weeklyStats) {
+      statsMap.set(row.player_id, row.stats)
+    }
+
+    function aggregateByPosition(playerIds: string[]) {
+      const result: Record<string, Record<string, number>> = {}
+      for (const pid of playerIds) {
+        const pos = positionMap?.get(pid)
+        if (!pos || !POSITION_STATS[pos]) continue
+        const stats = statsMap.get(pid)
+        if (!stats) continue
+        if (!result[pos]) result[pos] = {}
+        for (const { key } of POSITION_STATS[pos]) {
+          result[pos][key] = (result[pos][key] ?? 0) + (stats[key] ?? 0)
+        }
+      }
+      return result
+    }
+
+    return {
+      team1PosSummary: aggregateByPosition(team1Matchup.players),
+      team2PosSummary: aggregateByPosition(team2Matchup.players),
+    }
+  }, [weeklyStats, positionMap, weekMatchups, team1Id, team2Id])
+
   function handleTeamSelect(rosterId: number) {
     if (team1Id === rosterId) {
       setTeam1Id(team2Id)
@@ -142,16 +321,20 @@ export function HeadToHeadPage() {
 
       {/* Week Selector Tablist */}
       <div className="overflow-x-auto" role="tablist" aria-label="Week selector">
-        <div className="flex gap-1 pb-1">
+        <div ref={toggleRef} className="relative inline-flex rounded-md border border-gray-700/50 bg-bg-secondary">
+          {indicatorStyle && (
+            <div
+              className="absolute inset-y-0 rounded-md bg-accent transition-all duration-300 ease-out"
+              style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+            />
+          )}
           <button
             role="tab"
             aria-selected={selectedWeek == null}
             onClick={() => setSelectedWeek(null)}
             className={cn(
-              'shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-              selectedWeek == null
-                ? 'bg-accent text-white'
-                : 'bg-bg-secondary text-gray-400 hover:text-gray-200',
+              'relative z-10 shrink-0 px-3 py-1.5 text-sm font-medium transition-colors',
+              selectedWeek == null ? 'text-white' : 'text-gray-400 hover:text-gray-200',
             )}
           >
             All
@@ -163,10 +346,8 @@ export function HeadToHeadPage() {
               aria-selected={selectedWeek === w}
               onClick={() => setSelectedWeek(w)}
               className={cn(
-                'shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                selectedWeek === w
-                  ? 'bg-accent text-white'
-                  : 'bg-bg-secondary text-gray-400 hover:text-gray-200',
+                'relative z-10 shrink-0 px-3 py-1.5 text-sm font-medium transition-colors',
+                selectedWeek === w ? 'text-white' : 'text-gray-400 hover:text-gray-200',
               )}
             >
               {w}
@@ -213,7 +394,7 @@ export function HeadToHeadPage() {
                   <OwnerAvatar
                     avatarId={team1Info?.owner_avatar}
                     name={team1Info ? getTeamName(team1Info) : 'Team 1'}
-                    size="lg"
+                    size="xl"
                   />
                   <div>
                     <p className="font-semibold text-gray-100">
@@ -238,7 +419,7 @@ export function HeadToHeadPage() {
                   <OwnerAvatar
                     avatarId={team2Info?.owner_avatar}
                     name={team2Info ? getTeamName(team2Info) : 'Team 2'}
-                    size="lg"
+                    size="xl"
                   />
                 </div>
               </div>
@@ -279,14 +460,8 @@ export function HeadToHeadPage() {
                           >
                             {t1Score?.toFixed(2) ?? '-'}
                           </span>
-                          {t1Won && <Badge variant="win">W</Badge>}
-                          {!t1Won && !t2Won && <Badge variant="secondary">T</Badge>}
-                          {t2Won && <Badge variant="loss">L</Badge>}
                         </div>
                         <div className="flex items-center gap-4">
-                          {t2Won && <Badge variant="win">W</Badge>}
-                          {!t1Won && !t2Won && <Badge variant="secondary">T</Badge>}
-                          {t1Won && <Badge variant="loss">L</Badge>}
                           <span
                             className={`font-mono text-lg font-bold ${t2Won ? 'text-win' : 'text-gray-300'}`}
                           >
@@ -307,69 +482,70 @@ export function HeadToHeadPage() {
                 <CardTitle>Scoring Comparison</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-8">
-                  {/* Line Chart */}
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-gray-400">Trend</p>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={comparisonData}>
-                        <CartesianGrid stroke="var(--color-chart-grid)" strokeDasharray="3 3" />
-                        <XAxis dataKey="week" stroke="var(--color-chart-axis)" />
-                        <YAxis stroke="var(--color-chart-axis)" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--color-chart-tooltip-bg)',
-                            border: '1px solid var(--color-chart-tooltip-border)',
-                            borderRadius: '0.5rem',
-                            color: 'var(--color-chart-tooltip-text)',
-                          }}
-                        />
-                        <Legend />
-                        <Line
-                          type="monotone"
-                          dataKey="team1"
-                          name={team1Info ? getTeamName(team1Info) : 'Team 1'}
-                          stroke="#60a5fa"
-                          strokeWidth={2}
-                          dot={{ r: 4 }}
-                          connectNulls
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="team2"
-                          name={team2Info ? getTeamName(team2Info) : 'Team 2'}
-                          stroke="#f87171"
-                          strokeWidth={2}
-                          dot={{ r: 4 }}
-                          connectNulls
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Bar Chart */}
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-gray-400">Week by Week</p>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={comparisonData}>
-                        <CartesianGrid stroke="var(--color-chart-grid)" strokeDasharray="3 3" />
-                        <XAxis dataKey="week" stroke="var(--color-chart-axis)" />
-                        <YAxis stroke="var(--color-chart-axis)" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--color-chart-tooltip-bg)',
-                            border: '1px solid var(--color-chart-tooltip-border)',
-                            borderRadius: '0.5rem',
-                            color: 'var(--color-chart-tooltip-text)',
-                          }}
-                        />
-                        <Legend />
-                        <Bar dataKey="team1" name={team1Info ? getTeamName(team1Info) : 'Team 1'} fill="#60a5fa" />
-                        <Bar dataKey="team2" name={team2Info ? getTeamName(team2Info) : 'Team 2'} fill="#f87171" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                <div>
+                  <p className="mb-2 text-sm font-medium text-gray-400">Trend</p>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={comparisonData}>
+                      <CartesianGrid stroke="var(--color-chart-grid)" strokeDasharray="3 3" />
+                      <XAxis dataKey="week" stroke="var(--color-chart-axis)" />
+                      <YAxis stroke="var(--color-chart-axis)" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--color-chart-tooltip-bg)',
+                          border: '1px solid var(--color-chart-tooltip-border)',
+                          borderRadius: '0.5rem',
+                          color: 'var(--color-chart-tooltip-text)',
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="team1"
+                        name={team1Info ? getTeamName(team1Info) : 'Team 1'}
+                        stroke="#60a5fa"
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                        connectNulls
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="team2"
+                        name={team2Info ? getTeamName(team2Info) : 'Team 2'}
+                        stroke="#f87171"
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                        connectNulls
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {selectedWeek != null && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Position Breakdown — Week {selectedWeek}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {Object.keys(POSITION_STATS).map((pos) => (
+                    <PositionSpiderChart
+                      key={pos}
+                      position={pos}
+                      team1Stats={team1PosSummary[pos] ?? {}}
+                      team2Stats={team2PosSummary[pos] ?? {}}
+                      team1Name={team1Info ? getTeamName(team1Info) : 'Team 1'}
+                      team2Name={team2Info ? getTeamName(team2Info) : 'Team 2'}
+                    />
+                  ))}
+                </div>
+                {!weeklyStatsLoading && Object.keys(team1PosSummary).length === 0 && (
+                  <p className="py-4 text-center text-sm text-gray-400">
+                    No player stats available for this week. Run the ETL sync to populate stats.
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
