@@ -1,5 +1,5 @@
 import { MAX_REGULAR_SEASON_WEEKS, MAX_ROUNDS } from '@sleeper-explorer/shared'
-import type { SupabaseClient, League, PlayersResponse } from '@sleeper-explorer/shared'
+import type { SupabaseClient, League, PlayersResponse, PlayerWeeklyStatsRow } from '@sleeper-explorer/shared'
 
 import { createSleeperClient } from './sleeper-client'
 import type { SleeperClient } from './sleeper-client'
@@ -598,6 +598,81 @@ async function syncPlayoffBrackets(
   }
 }
 
+async function syncPlayerStats(
+  client: SleeperClient,
+  supabase: SupabaseClient,
+  leagues: League[],
+  currentWeek: number,
+): Promise<SyncEntityResult> {
+  try {
+    console.log('Syncing player weekly stats...')
+
+    // Collect all rostered player IDs across all leagues
+    const rosteredPlayerIds = new Set<string>()
+    for (const league of leagues) {
+      const rosters = await client.getLeagueRosters(league.league_id)
+      for (const roster of rosters) {
+        if (roster.players) {
+          for (const playerId of roster.players) {
+            rosteredPlayerIds.add(playerId)
+          }
+        }
+      }
+    }
+
+    if (rosteredPlayerIds.size === 0) {
+      console.log('No rostered players found, skipping stats sync')
+      return { entity: 'player_weekly_stats', success: true, count: 0 }
+    }
+
+    console.log(`Found ${rosteredPlayerIds.size} rostered players across ${leagues.length} league(s)`)
+
+    // Determine the season from the first league
+    const season = leagues[0].season
+    const maxWeek = Math.min(currentWeek, MAX_REGULAR_SEASON_WEEKS)
+
+    let totalCount = 0
+
+    for (let week = 1; week <= maxWeek; week++) {
+      const allStats = await client.getPlayerStats(season, week)
+
+      // Filter to only rostered players and create rows
+      const rows: PlayerWeeklyStatsRow[] = []
+      for (const [playerId, stats] of Object.entries(allStats)) {
+        if (!rosteredPlayerIds.has(playerId)) continue
+        // Skip players with no meaningful stats (just ranking data)
+        if (!stats['gp'] && !stats['pts_std']) continue
+
+        rows.push({
+          player_id: playerId,
+          season,
+          week,
+          stats,
+          synced_at: new Date().toISOString(),
+        })
+      }
+
+      if (rows.length > 0) {
+        // Batch upsert in chunks to avoid payload limits
+        const batches = chunk(rows, PLAYER_BATCH_SIZE)
+        for (const batch of batches) {
+          await upsertBatch(supabase, 'player_weekly_stats', batch, 'player_id,season,week')
+        }
+        totalCount += rows.length
+      }
+
+      console.log(`  Week ${week}: ${rows.length} player stats`)
+    }
+
+    console.log(`Synced ${totalCount.toLocaleString()} player stat rows across ${maxWeek} weeks`)
+    return { entity: 'player_weekly_stats', success: true, count: totalCount }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`Failed to sync player stats: ${message}`)
+    return { entity: 'player_weekly_stats', success: false, error: message }
+  }
+}
+
 // --- Sync orchestrators per mode ---
 
 /** Full historical sync for a set of leagues (all weeks, all rounds). */
@@ -628,6 +703,11 @@ async function runLeagueFullSync(
     const draftPicksResult = await syncDraftPicks(client, supabase, draftsData.draftIds)
     results.push(draftPicksResult)
   }
+
+  // Player weekly stats (needs rosters to determine rostered players)
+  const fullSyncWeek = await getCurrentWeek(client, supabase)
+  const playerStatsResult = await syncPlayerStats(client, supabase, leagues, fullSyncWeek)
+  results.push(playerStatsResult)
 }
 
 /** Incremental sync for leagues (current + previous week only, skip complete drafts). */
@@ -659,6 +739,10 @@ async function runLeagueIncrementalSync(
     const draftPicksResult = await syncDraftPicks(client, supabase, draftsData.draftIds)
     results.push(draftPicksResult)
   }
+
+  // Player weekly stats (needs rosters to determine rostered players)
+  const playerStatsResult = await syncPlayerStats(client, supabase, leagues, currentWeek)
+  results.push(playerStatsResult)
 }
 
 // --- Main sync orchestrator ---

@@ -11,6 +11,7 @@ import {
   draftPickSchema,
   tradedPickSchema,
   playoffMatchupSchema,
+  playerStatsResponseSchema,
 } from '@sleeper-explorer/shared'
 import type {
   NFLState,
@@ -24,6 +25,7 @@ import type {
   DraftPick,
   TradedPick,
   PlayoffMatchup,
+  PlayerStatsResponse,
 } from '@sleeper-explorer/shared'
 import type { ZodType, ZodTypeDef } from 'zod'
 
@@ -88,6 +90,7 @@ export interface SleeperClient {
   getDraftPicks(draftId: string): Promise<DraftPick[]>
   getTradedPicks(leagueId: string): Promise<TradedPick[]>
   getWinnersBracket(leagueId: string): Promise<PlayoffMatchup[]>
+  getPlayerStats(season: string, week: number): Promise<PlayerStatsResponse>
 }
 
 export function createSleeperClient(): SleeperClient {
@@ -147,6 +150,11 @@ export function createSleeperClient(): SleeperClient {
     async getWinnersBracket(leagueId: string): Promise<PlayoffMatchup[]> {
       const data = await fetchJson(`${base}/league/${leagueId}/winners_bracket`)
       return parseArray(data, playoffMatchupSchema, `winners_bracket:${leagueId}`)
+    },
+
+    async getPlayerStats(season: string, week: number): Promise<PlayerStatsResponse> {
+      const data = await fetchJson(`${base}/stats/nfl/regular/${season}/${week}`)
+      return parseObject(data, playerStatsResponseSchema, `player_stats:${season}:week${week}`)
     },
   }
 }
