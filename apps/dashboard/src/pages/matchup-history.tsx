@@ -175,7 +175,7 @@ export function MatchupHistoryPage() {
               <Card key={matchup.matchup_id}>
                 <CardContent className="p-3">
                   <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="flex flex-1 flex-col items-center gap-1">
                       <OwnerAvatar
                         avatarId={rosterAvatarMap.get(matchup.team1_roster_id) ?? null}
                         name={getName({ display_name: matchup.team1_name ?? `Team ${matchup.team1_roster_id}`, team_name: matchup.team1_team_name })}
@@ -187,10 +187,9 @@ export function MatchupHistoryPage() {
                       <p className={`text-2xl font-bold ${team1Wins ? 'text-win' : 'text-gray-300'}`}>
                         {matchup.team1_points?.toFixed(2) ?? '-'}
                       </p>
-                      {team1Wins && <Badge variant="win">W</Badge>}
                     </div>
                     <span className="px-4 text-lg font-bold text-gray-500">vs</span>
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="flex flex-1 flex-col items-center gap-1">
                       <OwnerAvatar
                         avatarId={rosterAvatarMap.get(matchup.team2_roster_id) ?? null}
                         name={getName({ display_name: matchup.team2_name ?? `Team ${matchup.team2_roster_id}`, team_name: matchup.team2_team_name })}
@@ -202,7 +201,6 @@ export function MatchupHistoryPage() {
                       <p className={`text-2xl font-bold ${team2Wins ? 'text-win' : 'text-gray-300'}`}>
                         {matchup.team2_points?.toFixed(2) ?? '-'}
                       </p>
-                      {team2Wins && <Badge variant="win">W</Badge>}
                     </div>
                   </div>
                 </CardContent>
@@ -270,20 +268,35 @@ export function MatchupHistoryPage() {
                   fillOpacity={0.08}
                   label={{ value: 'Playoffs', position: 'insideTop', fill: 'var(--color-muted-foreground)', fontSize: 11, fontWeight: 600 }}
                 />
-                <Line type="monotone" dataKey="avgScore" stroke="var(--color-chart-line)" strokeWidth={2} dot={{ fill: 'var(--color-chart-line)' }} name="League Avg" connectNulls={false} />
-                {teams.map((team, idx) =>
-                  enabledTeams.has(team.id) ? (
-                    <Line
-                      key={team.id}
-                      type="monotone"
-                      dataKey={`team_${team.id}`}
-                      stroke={TEAM_COLORS[idx % TEAM_COLORS.length]}
-                      strokeWidth={1.5}
-                      dot={false}
-                      name={team.name}
-                      connectNulls={false}
-                    />
-                  ) : null,
+                <Line type="monotone" dataKey="avgScore" stroke="var(--color-chart-line)" strokeWidth={2} dot={{ fill: 'var(--color-chart-line)' }} name="League Avg" connectNulls />
+                {teams.flatMap((team, idx) =>
+                  enabledTeams.has(team.id)
+                    ? [
+                        <Line
+                          key={`${team.id}-dash`}
+                          type="monotone"
+                          dataKey={`team_${team.id}`}
+                          stroke={TEAM_COLORS[idx % TEAM_COLORS.length]}
+                          strokeWidth={1}
+                          strokeDasharray="6 4"
+                          strokeOpacity={0.4}
+                          dot={false}
+                          name={`${team.name} (bye)`}
+                          connectNulls
+                          legendType="none"
+                        />,
+                        <Line
+                          key={`${team.id}-solid`}
+                          type="monotone"
+                          dataKey={`team_${team.id}`}
+                          stroke={TEAM_COLORS[idx % TEAM_COLORS.length]}
+                          strokeWidth={1.5}
+                          dot={false}
+                          name={team.name}
+                          connectNulls={false}
+                        />,
+                      ]
+                    : [],
                 )}
               </LineChart>
             </ResponsiveContainer>
