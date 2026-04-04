@@ -9,9 +9,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ErrorAlert } from '@/components/error-alert'
 import { TeamLogo } from '@/components/team-logo'
-import { usePlayers, useRosters } from '@/hooks/use-league-data'
+import { usePlayers, useRosters, useStandings } from '@/hooks/use-league-data'
 import { useLeagueContext } from '@/hooks/use-league-context'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { useDisplayName } from '@/hooks/use-display-name'
+import { OwnerAvatar } from '@/components/owner-avatar'
 
 const POSITIONS = ['All', 'QB', 'RB', 'WR', 'TE', 'K', 'DEF'] as const
 const PAGE_SIZE = 50
@@ -47,6 +49,7 @@ export function PlayerExplorerPage() {
   const [showInactive, setShowInactive] = useState(false)
 
   const { leagueId } = useLeagueContext()
+  const { getName } = useDisplayName()
 
   const debouncedSearch = useDebouncedValue(search, 300)
 
@@ -59,20 +62,26 @@ export function PlayerExplorerPage() {
   })
 
   const { data: rosters } = useRosters(leagueId)
+  const { data: standings } = useStandings(leagueId)
 
-  const rosteredPlayerIds = useMemo(() => {
-    const ids = new Set<string>()
-    if (rosters) {
-      for (const roster of rosters) {
-        if (roster.players) {
-          for (const id of roster.players) {
-            ids.add(id)
-          }
-        }
+  const playerOwnerMap = useMemo(() => {
+    const map = new Map<string, { displayName: string; avatar: string | null; teamName: string | null }>()
+    if (!rosters || !standings?.length) return map
+
+    for (const roster of rosters) {
+      const standing = standings.find((s) => s.roster_id === roster.roster_id)
+      if (!standing || !roster.players) continue
+
+      for (const playerId of roster.players) {
+        map.set(playerId, {
+          displayName: standing.display_name ?? `Team ${roster.roster_id}`,
+          avatar: standing.owner_avatar ?? null,
+          teamName: standing.team_name ?? null,
+        })
       }
     }
-    return ids
-  }, [rosters])
+    return map
+  }, [rosters, standings])
 
   const players = data?.players ?? []
   const totalCount = data?.totalCount ?? 0
@@ -215,11 +224,19 @@ export function PlayerExplorerPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {leagueId ? (
-                            <Badge variant={rosteredPlayerIds.has(player.player_id) ? 'secondary' : 'outline'}>
-                              {rosteredPlayerIds.has(player.player_id) ? 'Rostered' : 'Available'}
-                            </Badge>
-                          ) : (
+                          {leagueId ? (() => {
+                            const owner = playerOwnerMap.get(player.player_id)
+                            if (owner) {
+                              const name = getName({ display_name: owner.displayName, team_name: owner.teamName })
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <OwnerAvatar avatarId={owner.avatar} name={name} size="xs" />
+                                  <span className="truncate text-xs text-gray-300">{name}</span>
+                                </div>
+                              )
+                            }
+                            return <span className="text-xs text-gray-500">Available</span>
+                          })() : (
                             <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
