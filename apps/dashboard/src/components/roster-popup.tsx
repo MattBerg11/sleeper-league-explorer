@@ -36,7 +36,7 @@ export function RosterPopup({ open, onClose, title, players, playerMap }: Roster
           >
             {players.map((playerId) => (
               <p key={playerId} className="truncate text-xs text-gray-300">
-                {playerMap?.get(playerId) ?? playerId}
+                {playerMap?.get(playerId) ?? (playerMap ? playerId : 'Loading...')}
               </p>
             ))}
           </div>
