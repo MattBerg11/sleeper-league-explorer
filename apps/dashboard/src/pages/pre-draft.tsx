@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Clipboard, Plus, Minus, ArrowRightLeft, Users, X, Eye } from 'lucide-react'
+import { Clipboard, Plus, Minus, ArrowRightLeft, Users, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -382,7 +382,7 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName, playerMap, r
             <button
               type="button"
               onClick={() => setShowPicks((v) => !v)}
-              className="w-full rounded-lg bg-bg-primary/50 p-2.5 text-center transition-colors hover:bg-bg-primary/70"
+              className="w-full cursor-pointer rounded-lg bg-bg-primary/50 p-2.5 text-center ring-1 ring-transparent transition-colors hover:bg-bg-primary/70 hover:ring-gray-600/50"
             >
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Draft Picks</p>
               <p className="text-sm font-bold text-gray-100">{pickInfo.totalPicks}</p>
@@ -450,13 +450,10 @@ function TeamCard({ roster, owner, strengthTier, pickInfo, getName, playerMap, r
           <button
             type="button"
             onClick={() => setShowPlayers(true)}
-            className="rounded-lg bg-bg-primary/50 p-2.5 text-center transition-colors hover:bg-bg-primary/70"
+            className="cursor-pointer rounded-lg bg-bg-primary/50 p-2.5 text-center ring-1 ring-transparent transition-colors hover:bg-bg-primary/70 hover:ring-gray-600/50"
           >
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Roster Size</p>
             <p className="text-sm font-bold text-gray-100">{rosterSize}</p>
-            <p className="mt-0.5 flex items-center justify-center gap-1 text-[10px] text-accent">
-              <Eye className="h-3 w-3" /> View
-            </p>
           </button>
         </div>
       </CardContent>
