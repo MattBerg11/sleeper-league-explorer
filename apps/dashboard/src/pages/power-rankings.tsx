@@ -8,7 +8,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts'
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Info, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { OwnerAvatar } from '@/components/owner-avatar'
@@ -37,10 +37,10 @@ interface TeamMetrics {
 }
 
 function percentileRank(values: number[], value: number): number {
-  const sorted = [...values].sort((a, b) => a - b)
-  const idx = sorted.indexOf(value)
-  if (sorted.length <= 1) return 100
-  return Math.round((idx / (sorted.length - 1)) * 100)
+  if (values.length <= 1) return 100
+  const below = values.filter(v => v < value).length
+  const equal = values.filter(v => v === value).length
+  return Math.round(((below + (equal - 1) / 2) / (values.length - 1)) * 100)
 }
 
 function standardDeviation(values: number[]): number {
@@ -69,6 +69,7 @@ export function PowerRankingsPage() {
   const { getName } = useDisplayName()
 
   const [expandedTeam, setExpandedTeam] = useState<number | null>(null)
+  const [showWeightsModal, setShowWeightsModal] = useState(false)
 
   const isLoading = standingsLoading || matchupsLoading
   const error = standingsError ?? matchupsError
@@ -216,7 +217,17 @@ export function PowerRankingsPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
         <Card>
           <CardHeader>
-            <CardTitle>Rankings</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Rankings</CardTitle>
+              <button
+                type="button"
+                onClick={() => setShowWeightsModal(true)}
+                className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-700/50 hover:text-gray-200"
+                title="How are power rankings calculated?"
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2">
             {rankings.map((team, idx) => {
@@ -250,9 +261,6 @@ export function PowerRankingsPage() {
                       <p className="truncate font-semibold text-gray-100">
                         {getName({ display_name: team.displayName, team_name: team.teamName })}
                       </p>
-                      {team.teamName && (
-                        <p className="truncate text-xs text-gray-400">{team.displayName}</p>
-                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -301,22 +309,37 @@ export function PowerRankingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Scoring Weights</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
-                <WeightBar label="Points Per Game" weight={30} />
-                <WeightBar label="Win %" weight={25} />
-                <WeightBar label="Consistency" weight={20} />
-                <WeightBar label="Recent Form" weight={15} />
-                <WeightBar label="Strength of Schedule" weight={10} />
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
+
+      {showWeightsModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setShowWeightsModal(false)}
+        >
+          <div
+            className="mx-4 w-full max-w-md rounded-lg border border-gray-700/50 bg-bg-secondary p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <p className="font-semibold text-gray-100">Power Ranking Weights</p>
+              <button type="button" onClick={() => setShowWeightsModal(false)}>
+                <X className="h-4 w-4 text-gray-500 hover:text-gray-300" />
+              </button>
+            </div>
+            <div className="space-y-2 text-sm">
+              <p className="text-gray-300">Points Per Game — <span className="font-semibold text-gray-100">30%</span></p>
+              <p className="text-gray-300">Win Rate — <span className="font-semibold text-gray-100">25%</span></p>
+              <p className="text-gray-300">Consistency — <span className="font-semibold text-gray-100">20%</span></p>
+              <p className="text-gray-300">Recent Form (Last 3 weeks) — <span className="font-semibold text-gray-100">15%</span></p>
+              <p className="text-gray-300">Strength of Schedule — <span className="font-semibold text-gray-100">10%</span></p>
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-gray-400">
+              Rankings are calculated using percentile ranking for each metric, then combined using these weights to produce the final power score.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -347,20 +370,19 @@ function MovementBadge({ movement }: { movement: number }) {
 
 function MetricBreakdown({ team }: { team: TeamMetrics }) {
   const metrics = [
-    { label: 'Points Per Game', raw: team.ppg.toFixed(2), pct: team.ppgPct, weight: '30%' },
-    { label: 'Win %', raw: `${(team.winPct * 100).toFixed(1)}%`, pct: team.winPctPct, weight: '25%' },
-    { label: 'Consistency', raw: `σ = ${team.consistency > 0 ? (1 / team.consistency).toFixed(2) : '0'}`, pct: team.consistencyPct, weight: '20%' },
-    { label: 'Recent Form', raw: team.recentForm.toFixed(1), pct: team.recentFormPct, weight: '15%' },
-    { label: 'Strength of Schedule', raw: team.sos.toFixed(2), pct: team.sosPct, weight: '10%' },
+    { label: 'Points Per Game', raw: team.ppg.toFixed(2), pct: team.ppgPct },
+    { label: 'Win %', raw: `${(team.winPct * 100).toFixed(1)}%`, pct: team.winPctPct },
+    { label: 'Consistency', raw: team.consistency > 0 ? (1 / team.consistency).toFixed(2) : '0', pct: team.consistencyPct, tooltip: 'Standard deviation of weekly scores. Lower is better — means more consistent scoring.' },
+    { label: 'Recent Form', raw: team.recentForm.toFixed(1), pct: team.recentFormPct },
+    { label: 'Strength of Schedule', raw: team.sos.toFixed(2), pct: team.sosPct },
   ]
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-2 text-sm">
+      <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-2 text-sm">
         <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Metric</span>
         <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Value</span>
         <span className="hidden text-xs font-semibold uppercase tracking-wider text-gray-500 sm:block">Percentile</span>
-        <span className="hidden text-xs font-semibold uppercase tracking-wider text-gray-500 sm:block">Weight</span>
         {metrics.map((m) => (
           <MetricRow key={m.label} {...m} />
         ))}
@@ -369,15 +391,21 @@ function MetricBreakdown({ team }: { team: TeamMetrics }) {
   )
 }
 
-function MetricRow({ label, raw, pct, weight }: { label: string; raw: string; pct: number; weight: string }) {
+function MetricRow({ label, raw, pct, tooltip }: { label: string; raw: string; pct: number; tooltip?: string }) {
   return (
     <>
-      <span className="text-gray-300">{label}</span>
+      <span className="flex items-center gap-1 text-gray-300">
+        {label}
+        {tooltip && (
+          <span title={tooltip}>
+            <Info className="h-3 w-3 flex-shrink-0 text-gray-500" />
+          </span>
+        )}
+      </span>
       <span className="text-right font-mono text-gray-100">{raw}</span>
       <span className={cn('hidden text-right font-mono sm:block', getScoreColor(pct))}>
         {pct}th
       </span>
-      <span className="hidden text-right text-gray-500 sm:block">{weight}</span>
     </>
   )
 }
@@ -496,19 +524,4 @@ function TopTeamsRadarChart({ teams }: { teams: TeamMetrics[] }) {
   )
 }
 
-function WeightBar({ label, weight }: { label: string; weight: number }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-36 flex-shrink-0 text-gray-300">{label}</span>
-      <div className="flex-1">
-        <div className="h-2 overflow-hidden rounded-full bg-gray-700/50">
-          <div
-            className="h-full rounded-full bg-accent/60"
-            style={{ width: `${weight * 3.33}%` }}
-          />
-        </div>
-      </div>
-      <span className="w-8 text-right font-mono text-xs text-gray-400">{weight}%</span>
-    </div>
-  )
-}
+
