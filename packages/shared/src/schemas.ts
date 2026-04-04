@@ -186,3 +186,10 @@ export const playoffMatchupSchema = z.object({
   p: z.number().optional(),
 }).passthrough()
 export type PlayoffMatchup = z.infer<typeof playoffMatchupSchema>
+
+// Player Weekly Stats Response (Record<player_id, stats_object>)
+export const playerStatsResponseSchema = z.record(
+  z.string(),
+  z.record(z.string(), z.number()).default({})
+)
+export type PlayerStatsResponse = z.infer<typeof playerStatsResponseSchema>

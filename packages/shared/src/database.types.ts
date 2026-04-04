@@ -174,6 +174,14 @@ export interface PlayoffBracketRow {
   synced_at: string
 }
 
+export interface PlayerWeeklyStatsRow {
+  player_id: string
+  season: string
+  week: number
+  stats: Record<string, number>
+  synced_at: string
+}
+
 /** View types */
 export interface StandingsRow {
   league_id: string
